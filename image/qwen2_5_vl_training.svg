@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Qwen2.5-VL Training Flow</title>
+  <desc id="desc">A high-level diagram showing initialization, pre-training phases, data pipelines, post-training alignment, and inference flow for Qwen2.5-VL.</desc>
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef2f7"/>
+    </linearGradient>
+    <style><![CDATA[
+      .title { font: 700 24px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #0f172a; }
+      .subtitle { font: 600 18px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #0f172a; }
+      .label { font: 500 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #0f172a; }
+      .small { font: 400 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; fill: #334155; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.2; rx: 10; }
+      .pill { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; rx: 16; }
+      .phase { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.4; rx: 12; }
+      .accent { fill: #ecfeff; stroke: #06b6d4; stroke-width: 1.4; rx: 12; }
+      .arrow { stroke: #475569; stroke-width: 1.6; marker-end: url(#arrowhead); fill: none; }
+      .arrow2 { stroke: #64748b; stroke-width: 1.4; marker-end: url(#arrowhead2); fill: none; stroke-dasharray: 6 4; }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#475569" />
+    </marker>
+    <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="900" fill="url(#bgGrad)"/>
+  <text x="600" y="40" text-anchor="middle" class="title">Qwen2.5‑VL Training Flow</text>
+
+  <!-- Left column: Initialization -->
+  <rect x="40" y="70" width="330" height="180" class="phase"/>
+  <text x="60" y="100" class="subtitle">0) Initialization</text>
+  <rect x="60" y="120" width="290" height="50" class="box"/>
+  <text x="75" y="150" class="label">LLM: Init from Qwen2.5</text>
+  <rect x="60" y="175" width="290" height="50" class="box"/>
+  <text x="75" y="204" class="small">ViT: 2D‑RoPE, window attention, few full attention</text>
+
+  <!-- Center column: Pre-training phases -->
+  <rect x="420" y="70" width="740" height="420" class="phase"/>
+  <text x="440" y="100" class="subtitle">1) Pre‑training</text>
+
+  <!-- Phase 1: Visual pre-train -->
+  <rect x="440" y="120" width="700" height="90" class="box"/>
+  <text x="455" y="145" class="label">Phase I: Visual Pre‑train (train ViT only)</text>
+  <text x="455" y="170" class="small">Data: captions, visual knowledge, OCR • Goal: align visual features</text>
+
+  <!-- Phase 2: Multimodal -->
+  <rect x="440" y="220" width="700" height="120" class="box"/>
+  <text x="455" y="245" class="label">Phase II: Multimodal Pre‑train (unfreeze all)</text>
+  <text x="455" y="270" class="small">Data: interleaved img‑text, VQA, video, math, agent, text</text>
+  <text x="455" y="292" class="small">Engineering: pack to 8,192 tokens • native resolution • window attention</text>
+
+  <!-- Phase 3: Long context -->
+  <rect x="440" y="350" width="700" height="120" class="box"/>
+  <text x="455" y="375" class="label">Phase III: Long‑context Pre‑train</text>
+  <text x="455" y="400" class="small">Data: long video/doc/agent • dynamic FPS • absolute‑time MRoPE</text>
+  <text x="455" y="422" class="small">Sequence length → 32,768 • robust long‑range reasoning</text>
+
+  <!-- Data pipelines (bottom left) -->
+  <rect x="40" y="270" width="330" height="220" class="accent"/>
+  <text x="60" y="300" class="subtitle">Data Pipelines</text>
+  <rect x="60" y="320" width="290" height="38" class="pill"/>
+  <text x="75" y="345" class="small">Interleaved img‑text scoring + cleaning</text>
+  <rect x="60" y="365" width="290" height="38" class="pill"/>
+  <text x="75" y="390" class="small">Grounding with absolute coordinates (boxes + points)</text>
+  <rect x="60" y="410" width="290" height="38" class="pill"/>
+  <text x="75" y="435" class="small">Document omni‑parsing → structured HTML with bbox</text>
+  <rect x="60" y="455" width="290" height="38" class="pill"/>
+  <text x="75" y="480" class="small">OCR (multilingual), charts, tables • Video (dynamic FPS)</text>
+
+  <!-- Arrows from data to phases -->
+  <path class="arrow2" d="M370,340 C410,340 420,180 440,180"/>
+  <path class="arrow2" d="M370,390 C410,390 420,270 440,270"/>
+  <path class="arrow2" d="M370,440 C410,440 420,410 440,410"/>
+
+  <!-- Post-training alignment -->
+  <rect x="40" y="520" width="1120" height="210" class="phase"/>
+  <text x="60" y="550" class="subtitle">2) Post‑training Alignment</text>
+
+  <rect x="60" y="570" width="520" height="140" class="box"/>
+  <text x="75" y="595" class="label">SFT: Supervised Fine‑Tuning (freeze ViT)</text>
+  <text x="75" y="618" class="small">ChatML multi‑turn multimodal instructions (~2M; 50% text / 50% multimodal)</text>
+  <text x="75" y="640" class="small">Two‑stage filtering: domain classification → rule/model scoring</text>
+  <text x="75" y="662" class="small">Rejection sampling for CoT; verify visual grounding in reasoning</text>
+
+  <rect x="600" y="570" width="560" height="140" class="box"/>
+  <text x="615" y="595" class="label">DPO: Direct Preference Optimization (freeze ViT)</text>
+  <text x="615" y="618" class="small">Image‑text + text preference data (single pass)</text>
+  <text x="615" y="640" class="small">Align style, helpfulness, safety with human preferences</text>
+
+  <!-- Inference flow -->
+  <rect x="40" y="750" width="1120" height="120" class="phase"/>
+  <text x="60" y="780" class="subtitle">3) Inference Flow</text>
+  <rect x="60" y="800" width="260" height="50" class="box"/>
+  <text x="75" y="830" class="small">Image/Video → ViT (native resolution)</text>
+  <path class="arrow" d="M320,825 L360,825"/>
+  <rect x="360" y="800" width="330" height="50" class="box"/>
+  <text x="375" y="830" class="small">Patch grouping → MLP merger → 2048‑dim visual tokens</text>
+  <path class="arrow" d="M690,825 L730,825"/>
+  <rect x="730" y="800" width="430" height="50" class="box"/>
+  <text x="745" y="830" class="small">Concat with text → LLM → autoregressive outputs (QA, caption, HTML, boxes)</text>
+</svg> 
