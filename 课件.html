@@ -8066,7 +8066,155 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1-%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83%E6%97%B6%E7%9A%84%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">1 模型训练时的内存消耗<a class="anchor-link" href="#1-%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83%E6%97%B6%E7%9A%84%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">¶</a></h3><h3 id="2-DeepSeed-ZeRO">2 DeepSeed-ZeRO<a class="anchor-link" href="#2-DeepSeed-ZeRO">¶</a></h3><h3 id="3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">3 各微调范式介绍<a class="anchor-link" href="#3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">¶</a></h3><h3 id="4">4<a class="anchor-link" href="#4">¶</a></h3>
+<h3 id="1-%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83%E6%97%B6%E7%9A%84%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">1 模型训练时的内存消耗<a class="anchor-link" href="#1-%E6%A8%A1%E5%9E%8B%E8%AE%AD%E7%BB%83%E6%97%B6%E7%9A%84%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">¶</a></h3><p>微软：《ZeRO: Memory optimizations Toward Training Trillion Parameter Models》</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/10.png" width="800"/>
+</p>
+图 1：比较模型状态的每设备内存消耗，并采用三个阶段的 ZeRO-DP 优化。
+Ψ表示模型大小（参数数），K表示优化器状态的内存乘数，Nd表示DP度。
+在本例中，我们假设模型大小为 Ψ = 7.5B，DP 为 Nd = 64，K = 12，基于 Adam 优化器的混合精度训练。
+
+<p>例如，一个拥有1.5B参数的GPT-2模型，在16位精度（FP16）下其参数（或权重）需要3GB的内存，但使用TensorFlow或PyTorch在单个GPU（显存为32GB）上训练时却无法实现。人们不禁会好奇，所有这些内存都去了哪里？
+在模型训练过程中，大部分内存被<strong>模型状态</strong>占用，即包含优化器状态、梯度和参数的张量。除这些模型状态外，其余的内存主要由激活值、临时缓冲区和碎片化的内存组成，我们统称为<strong>残余状态</strong>。以下我们会详细探讨这些内存消耗的具体情况。</p>
+<h4 id="A.-%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E3%80%81%E6%A2%AF%E5%BA%A6%E5%92%8C%E5%8F%82%E6%95%B0">A. 模型状态：优化器状态、梯度和参数<a class="anchor-link" href="#A.-%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E3%80%81%E6%A2%AF%E5%BA%A6%E5%92%8C%E5%8F%82%E6%95%B0">¶</a></h4><p>在训练过程中，设备的绝大部分内存都被模型状态占用。例如，Adam优化器[6]是深度学习中最常用的优化器之一。Adam需要存储两个优化器状态：</p>
+<ul>
+<li>动量（Momentum）——对梯度的时间平均；</li>
+<li>方差（Variance）——梯度的二阶矩估计。</li>
+</ul>
+<p>因此，在使用Adam训练模型时，必须有足够的内存来保存这两个状态的副本。此外，还需要存储梯度和模型参数本身。在这三类与参数相关的张量中，优化器状态通常占用最多的内存，特别是在混合精度训练（Mixed-Precision Training）中。</p>
+<p><strong>混合精度训练</strong></p>
+<p>当前关于训练大模型的先进方法是采用混合精度（FP16/FP32）训练[26]，即将参数和激活值存储为FP16，从而利用GPU上的张量核心（Tensor Core）实现高吞吐量[27]。在混合精度训练中，前向传播和反向传播都使用FP16的权重和激活值。但为了有效地计算和应用更新（如梯度下降），优化器会保留FP32的参数副本和其他优化状态。</p>
+<p>以Adam优化器为例，训练拥有Ψ个参数的模型时，需要<strong>同时存储</strong>：</p>
+<ul>
+<li>参数的FP16副本和梯度（每个占用2Ψ字节）；</li>
+<li>参数的FP32副本、动量和方差（每个占用4Ψ字节）。</li>
+</ul>
+<p>定义“优化器状态所需的额外内存倍数”为K，即存储这些状态额外所需的内存与Ψ的乘积。例如，混合精度Adam的K值为12。
+因此，总的内存消耗为：</p>
+<p><code>2Ψ（FP16参数） + 2Ψ（FP16梯度） + KΨ（FP32优化器状态） = 16Ψ 字节</code></p>
+<p>对于参数量为15亿（1.5B）的GPT-2模型，内存需求至少为24GB。而仅存放FP16参数的内存需求仅为3GB，明显远远低于实际所需。</p>
+<h4 id="B.-%E6%AE%8B%E4%BD%99%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">B. 残余内存消耗<a class="anchor-link" href="#B.-%E6%AE%8B%E4%BD%99%E5%86%85%E5%AD%98%E6%B6%88%E8%80%97">¶</a></h4><p><strong>激活值</strong>在训练中也会占用大量内存[8]。
+以1.5B参数、序列长度为1000、批次大小为32的GPT-2模型为例，大约需要60GB的内存。
+为了降低激活值的内存占用，通常会采用激活检查点（Activation Checkpointing）技术，即只存储部分激活值，待需要时再重新计算（Recomputation），将激活值内存削减至原来的平方根左右，但会带来约33%的额外计算开销[8]。
+使用激活检查点后，该模型的激活内存可以减至约8GB。
+虽然这种方法显著减少了激活值内存占用，但对于更大规模的模型（如参数达到100B级），即使采用激活检查点，内存需求仍然高达约60GB（批次大小为32）。</p>
+<p>此外，用于存储中间结果的<strong>临时缓冲区</strong>也会消耗不少内存。在某些操作中，例如梯度全规约（All-Reduce）或梯度范数计算，为了提升吞吐量，所有梯度通常会被“融合”到一个扁平缓冲区中进行操作。比如，跨设备的All-Reduce操作在大消息传输中效率更高。
+这些缓冲区通常是FP32的张量（即更高精度），虽然梯度本身多为FP16，但融合缓冲区的大小依操作而定。当模型参数很大时，这些临时缓冲区的大小是不可忽视的。以15亿参数的模型为例，扁平化的FP32缓冲区大约需要6GB。</p>
+<p><strong>内存碎片化</strong>
+至此，我们讨论了训练中实际的内存消耗。但是即使系统中有很多剩余内存，也可能由于碎片化导致“可用内存不足”而无法成功分配所需空间。
+这是因为内存的碎片化现象：请求的连续内存块不足，而实际上总剩余内存远大于请求值。特别是在训练极大模型时，碎片化问题尤为严重，甚至在仍有30%以上总内存未被使用的情况下也会出现“内存溢出”问题。</p>
+<h3 id="2-DeepSeed-ZeRO">2 DeepSeed-ZeRO<a class="anchor-link" href="#2-DeepSeed-ZeRO">¶</a></h3><p>简要介绍当前广泛使用的分布式训练范式，由微软提出的DeepSpeed-ZeRO-DP。</p>
+<p>虽然现有的DP方法在每台设备上复制模型状态，并带来显著的内存开销，ZeRO-DP通过将优化器状态、梯度和参数划分到各个数据并行进程中，消除了这种内存冗余。图1量化并可视化了有无ZeRO-DP情况下的内存需求。该图显示了在每个优化阶段（Pos、Pg 和 Pp）后，经过划分后内存占用的变化情况，即优化的三个阶段。</p>
+<h4 id="A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">A. Pos：优化器状态划分  （ZeRO-1: Pos）<a class="anchor-link" href="#A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">¶</a></h4><p>对于数据并行度为 Nd 的情况，我们将优化器状态平均划分为 Nd 个部分，使第 i 个数据并行进程只更新对应第 i 个划分的优化器状态。
+因此，每个数据并行进程仅需存储和更新总优化器状态的 1/Nd ，以及参数的 1/Nd。
+为确保所有参数都已更新，我们在每个训练步骤结束后，进行一次全体收集（all-gather）操作，以获得所有数据并行进程中更新的完整参数。<br/>
+内存节省：如图1所示，经过状态划分后，内存消耗从 4Ψ + KΨ 减少到 4Ψ + (KΨ)/Nd。以图中示例为例，一个参数为75亿的模型在64路DP（Nd=64）下使用Pos优化后，需要31.4GB内存，而标准DP则需要120GB。此外，当Nd值较大时，模型状态的内存需求从 16Ψ（即4Ψ + 12Ψ）减少到约4Ψ，减少了约4倍。</p>
+<h4 id="B.-Pg%EF%BC%9A%E6%A2%AF%E5%BA%A6%E5%88%92%E5%88%86--%EF%BC%88ZeRO-2:-Pos+g%EF%BC%89">B. Pg：梯度划分  （ZeRO-2: Pos+g）<a class="anchor-link" href="#B.-Pg%EF%BC%9A%E6%A2%AF%E5%BA%A6%E5%88%92%E5%88%86--%EF%BC%88ZeRO-2:-Pos+g%EF%BC%89">¶</a></h4><p>每个数据并行进程只更新对应参数部分的梯度，因此它只需要对应参数的缩减梯度。在反向传播过程中，梯度会在对应的进程上被归约（reduce），随后不再需要这些梯度，相关内存可以释放。这将原本占用 2Ψ 内存的梯度空间，缩减到 2Ψ/Nd。<br/>
+这基本上是一个Reduce-Scatter操作，不同参数对应的梯度被分散到不同的进程进行减少。为了提高效率，我们采用分桶策略：将所有对应同一分区的梯度归入一个桶，并对整个桶进行减少操作。这类似于NVIDIA AMP优化中的梯度桶化，旨在Overlap通信和计算。在本方法中，我们在分区边界执行reduce操作，以减少内存占用并实现通信与计算的重叠。<br/>
+内存节省：通过去除梯度和优化器状态的冗余，内存需求进一步降低到 2Ψ + (14Ψ)/Nd。以图中的例子为例，使用Pos+g在64路DP下，参数为75亿的模型只需约16.6GB内存，而标准DP则需要120GB。当Nd较大时，模型状态的内存从 16Ψ 下降到约2Ψ。</p>
+<h4 id="C.-Pp%EF%BC%9A%E5%8F%82%E6%95%B0%E5%88%92%E5%88%86--%EF%BC%88ZeRO-3:-Pos+g+p%EF%BC%89">C. Pp：参数划分  （ZeRO-3: Pos+g+p）<a class="anchor-link" href="#C.-Pp%EF%BC%9A%E5%8F%82%E6%95%B0%E5%88%92%E5%88%86--%EF%BC%88ZeRO-3:-Pos+g+p%EF%BC%89">¶</a></h4><p>参数的处理方式与优化器状态和梯度相似。每个进程只存储所属分区的参数，当需要其他分区的参数进行前向或反向传播时，相关参数通过广播（broadcast）从对应的进程获取。虽然这似乎会带来较大通信开销，但实际上仅会使总通信量变为基线DP的1.5倍，同时实现的内存节省与模型复制（MP）相当，但通信开销只有其一部分，具体在第七章C节详细讨论。<br/>
+内存节省：采用参数划分后，模型参数为 Ψ 时的存储需求从 16Ψ 降到 16Ψ/Nd。以示例模型为例，在64路DP下使用Pos+p+g，只需约1.9GB模型状态内存，而非标准DP下的120GB。这意味着，ZeRO显著扩展了DP的能力——只要有足够多的设备共享模型状态，就能训练规模更大的模型。</p>
+<h4 id="D.-%E6%A8%A1%E5%9E%8B%E8%A7%84%E6%A8%A1%E7%9A%84%E5%BD%B1%E5%93%8D">D. 模型规模的影响<a class="anchor-link" href="#D.-%E6%A8%A1%E5%9E%8B%E8%A7%84%E6%A8%A1%E7%9A%84%E5%BD%B1%E5%93%8D">¶</a></h4><p>Pos、Pos+g 和 Pos+g+p三个划分阶段，分别将模型状态的内存需求在每个数据并行进程内部，减少至原来的4倍、8倍和Nd倍。表一分析了不同模型在这三个阶段的内存消耗情况。没有ZeRO时，无论DP程度如何，内存都等于第一行的值。当Nd=64时，使用Pos、Pos+g和Pos+g+p，ZeRO可以训练多达7.5亿、14亿和128亿参数的模型。若Nd=1024，启用所有ZeRO优化后（Pos+g+p），甚至能训练参数达一万亿（1万亿）的模型。没有ZeRO，DP最大的模型只能训练不到15亿参数。</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/11.png" width="400"/>
+</p>
+<p>如图为ZeRO-DP三阶段都启用的伪代码。先给每个进程都分配一部分层，前向传播时逐层<em>收集模型切片</em>然后计算然后<em>释放模型切片</em>，反向传播时逐层<em>收集模型切片</em>然后计算然后规约，然后<em>释放模型切片+梯度切片</em>。</p>
+<h3 id="3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">3 各微调范式介绍<a class="anchor-link" href="#3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">¶</a></h3><h4 id="3.1-Lora">3.1 Lora<a class="anchor-link" href="#3.1-Lora">¶</a></h4><h4 id="3.3-QLora">3.3 QLora<a class="anchor-link" href="#3.3-QLora">¶</a></h4><!-- https://zhuanlan.zhihu.com/p/1903385294344021244 -->
+<h3 id="FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">FPFT、LoRA、QLoRA 微调范式选型思路<a class="anchor-link" href="#FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">¶</a></h3><p>围绕三种主流范式，给出原理、显存估算、示例与适用场景，最后给出简明选型准则。</p>
+<h4 id="%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">一、全参数微调（FPFT）<a class="anchor-link" href="#%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">¶</a></h4><ul>
+<li><strong>原理（做什么）</strong><ul>
+<li>更新模型全部权重，能够系统性重塑表示与推理过程；常配合混合精度与分布式（ZeRO-2/3）、激活检查点。</li>
+</ul>
+</li>
+<li><strong>显存估算（怎么算）</strong><ul>
+<li>核心占用（FP16/BF16 + AdamW）：参数 2X + 梯度 2X + 优化器状态 8X = $12X$ GB</li>
+<li>含激活与开销的经验预算：下限约 14X–18X GB；更稳妥按 ≥ 20X GB 估。</li>
+<li>激活粗估：$ \text{ActMem} \approx \text{batch} \times \text{seq} \times \text{hidden} \times \text{layers} \times \text{bytes} \times f $，bytes≈2（FP16），f 常取 2–3。</li>
+</ul>
+</li>
+<li><strong>示例（多大卡能跑）</strong><ul>
+<li>7B：核心 ≈ 12×7=84 GB；加激活后 &gt;100 GB。常用 2×80GB（ZeRO-2/3）。</li>
+<li>70B：核心 ≈ 840 GB；总需求 &gt;1 TB，需要多机多卡集群。</li>
+</ul>
+</li>
+<li><strong>适用场景（何时用）</strong><ul>
+<li>极大/结构性分布偏移（跨语种深改、专业知识体系注入）。</li>
+<li>追求单一领域极限性能；需要内化价值/安全到表示层。</li>
+<li>做架构/词表/模态侧改动。</li>
+</ul>
+</li>
+<li><strong>注意点（风险与建议）</strong><ul>
+<li>成本高、易遗忘通用能力；需严格评测与回滚预案。</li>
+<li>建议：BF16 优先、激活检查点、梯度累积、ZeRO 分片、梯度裁剪与稳定的 LR 计划。</li>
+</ul>
+</li>
+</ul>
+<h4 id="%E4%BA%8C%E3%80%81LoRA%EF%BC%88Low-Rank-Adaptation%EF%BC%89">二、LoRA（Low-Rank Adaptation）<a class="anchor-link" href="#%E4%BA%8C%E3%80%81LoRA%EF%BC%88Low-Rank-Adaptation%EF%BC%89">¶</a></h4><p align="center">
+<img alt="No description has been provided for this image" src="./image/13.png" width="300"/>
+</p>
+- **原理（做什么）**  
+  - 冻结基座，给部分权重矩阵注入低秩增量 $\Delta W = A B$，仅训练少量适配器参数，显著降显存/存储/部署成本。
+- **显存估算（怎么算）**  
+  - 基座（FP16/BF16）≈ $2X$ GB；LoRA 参数/梯度/优化器相对很小。  
+  - 总显存 ≈ $2X$ GB + 激活 + 少量开销；经验范围 ≈ (2.5–4)×X GB（取决于激活）。
+- **示例（多大卡能跑）**  
+  - 7B：基座 ≈14 GB；激活（有检查点、适中 batch/seq）≈5–15 GB → 总计 ≈20–30+ GB（24–40GB 卡可行）。  
+  - 70B：基座 ≈140 GB；总计 ≈160–190+ GB（2–3×80GB）。
+- **适用场景（何时用）**  
+  - 资源有限、需快速迭代/多域多版本（易插拔、便于合并/切换）。  
+  - 输入风格/格式偏移、中等强度偏好与安全对齐（SFT/DPO/RLHF 的主力路径）。
+- **注意点（风险与建议）**  
+  - 表达受限：rank/覆盖层数不足时上限受约束；必要时提高 rank/层覆盖或局部解冻。  
+  - 关键超参：  
+    - **rank r**（表达力/容量）、**alpha**（缩放）、**dropout**（正则）、  
+    - **target modules**（常见 q/k/v/o、MLP 投影层）、  
+    - **学习率/调度**（LoRA 参数可用较大学习率，注意稳定性）。
+
+<h4 id="%E4%B8%89%E3%80%81QLoRA%EF%BC%884-bit-%E5%9F%BA%E5%BA%A7-+-LoRA%EF%BC%89">三、QLoRA（4-bit 基座 + LoRA）<a class="anchor-link" href="#%E4%B8%89%E3%80%81QLoRA%EF%BC%884-bit-%E5%9F%BA%E5%BA%A7-+-LoRA%EF%BC%89">¶</a></h4><p align="center">
+<img alt="No description has been provided for this image" src="./image/14.png" width="800"/>
+</p>
+- **原理（做什么）**  
+  - 将基座权重量化到 4-bit（如 NF4，常配 Double Quant），计算仍用 FP16/BF16，训练仅 LoRA 适配器；可配“分页优化器”降低峰值显存。
+- **显存估算（怎么算）**  
+  - 基座 4-bit 近似 ≈ $0.5X$ GB（含量化开销近似）；总显存多在 (0.7–1.5)×X GB。  
+  - 激活仍是大头，需同样依赖梯度检查点与 batch/seq 控制。
+- **示例（多大卡能跑）**  
+  - 7B：基座 ≈3.5–5 GB；总计常 10–16 GB（单卡 12–24GB 友好）。  
+  - 70B：在 80GB 单卡上有机会跑通（batch/seq 受限，吞吐较低）。
+- **适用场景（何时用）**  
+  - 单卡显存紧张（10–24GB）也要完成指令微调/原型验证。  
+  - 多域多版本、成本敏感、需要快速试错与上线演示。
+- **注意点（风险与建议）**  
+  - 量化误差可能影响难任务/细粒度对齐，建议：NF4 + 双量化、计算类型 BF16、谨慎量化嵌入/LayerNorm。  
+  - 可能需要提高 LoRA rank/扩大覆盖弥补量化损失；强烈建议激活检查点与小 batch 试跑观测峰值显存。
+
+<h4 id="%E5%9B%9B%E3%80%81%E9%80%89%E5%9E%8B%E6%80%BB%E8%A7%88%EF%BC%88%E5%BF%AB%E9%80%9F%E5%86%B3%E7%AD%96%EF%BC%89">四、选型总览（快速决策）<a class="anchor-link" href="#%E5%9B%9B%E3%80%81%E9%80%89%E5%9E%8B%E6%80%BB%E8%A7%88%EF%BC%88%E5%BF%AB%E9%80%9F%E5%86%B3%E7%AD%96%EF%BC%89">¶</a></h4><ul>
+<li><strong>先看算力/时限</strong><ul>
+<li>单卡 ≤24GB：优先 QLoRA；24–80GB：优先 LoRA；充足多卡、追极限：FPFT。</li>
+</ul>
+</li>
+<li><strong>再看任务“偏移强度”</strong><ul>
+<li>结构性/极大偏移、架构改动：FPFT；中等或输入风格偏移：LoRA/QLoRA。</li>
+</ul>
+</li>
+<li><strong>再看业务诉求</strong><ul>
+<li>单一高性能定制与深度内化：FPFT；多版本快速迭代与低成本维护：LoRA/QLoRA。</li>
+</ul>
+</li>
+<li><strong>共同工程建议</strong><ul>
+<li>激活检查点（几乎必备）、梯度累积、监控 <code>torch.cuda.max_memory_allocated()</code>、必要时用 ZeRO-2/3 分片；小 batch/短 seq 先试跑再放大。</li>
+</ul>
+</li>
+</ul>
+<p>——</p>
+<ul>
+<li>总结要点<ul>
+<li>FPFT：能力最强、成本最高；按 ≥20X GB 估显存，适合极大偏移与极限性能需求。</li>
+<li>LoRA：性价比高、上线友好；显存 ≈(2.5–4)×X，适合多数 SFT/对齐工作。</li>
+<li>QLoRA：极致节省；显存 ≈(0.7–1.5)×X，适合单卡/低成本快速验证与多版本维护。</li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -8141,7 +8289,7 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3ddb5d3d">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c6686130">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8158,7 +8306,175 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A6-Prompt-%E5%B7%A5%E7%A8%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%90%88%E6%88%90%EF%BC%88%E5%B0%8F%E6%A0%B7%E6%9C%AC%E5%BC%BA%E5%8C%96%EF%BC%89">A6 Prompt 工程与数据合成（小样本强化）<a class="anchor-link" href="#A6-Prompt-%E5%B7%A5%E7%A8%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%90%88%E6%88%90%EF%BC%88%E5%B0%8F%E6%A0%B7%E6%9C%AC%E5%BC%BA%E5%8C%96%EF%BC%89">¶</a></h2><p>以任务结构化为中心设计可迁移的提示模板，采用变量化与多样化策略扩展样本；建立合成数据的质检规则与偏差控制方法，在小样本条件下验证对特定子任务的增益，并总结可复用的模板与筛选标准。</p>
+<h2 id="A6-Prompt-%E5%B7%A5%E7%A8%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%90%88%E6%88%90%EF%BC%88%E5%B0%8F%E6%A0%B7%E6%9C%AC%E5%BC%BA%E5%8C%96%EF%BC%89">A6 Prompt 工程与数据合成（小样本强化）<a class="anchor-link" href="#A6-Prompt-%E5%B7%A5%E7%A8%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E5%90%88%E6%88%90%EF%BC%88%E5%B0%8F%E6%A0%B7%E6%9C%AC%E5%BC%BA%E5%8C%96%EF%BC%89">¶</a></h2><h3 id="%E7%9B%AE%E6%A0%87">目标<a class="anchor-link" href="#%E7%9B%AE%E6%A0%87">¶</a></h3><ul>
+<li>在明确任务结构的前提下，设计可迁移的提示模板。</li>
+<li>通过变量化与多样化扩展少量样本，实现低成本数据放大。</li>
+<li>建立自动+人工的质检与偏差控制，确保合成数据可用且稳健。</li>
+<li>在小样本条件下验证对特定子任务的实际增益，并沉淀可复用资产。</li>
+</ul>
+<h3 id="%E4%B8%80%E3%80%81%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%84%E5%8C%96%E4%B8%8E%E5%8F%AF%E8%BF%81%E7%A7%BB%E6%A8%A1%E6%9D%BF">一、任务结构化与可迁移模板<a class="anchor-link" href="#%E4%B8%80%E3%80%81%E4%BB%BB%E5%8A%A1%E7%BB%93%E6%9E%84%E5%8C%96%E4%B8%8E%E5%8F%AF%E8%BF%81%E7%A7%BB%E6%A8%A1%E6%9D%BF">¶</a></h3><ul>
+<li><strong>任务卡（Task Card）最小字段</strong><ul>
+<li><strong>任务定义</strong>：问题类型（抽取/分类/生成/归纳/推理）。</li>
+<li><strong>输入要素</strong>：文本/表格/图像描述、上下文、可用外部知识。</li>
+<li><strong>约束与规则</strong>：格式（如 JSON schema）、边界（不可编造/必须引用）、长度与语气。</li>
+<li><strong>输出结构</strong>：字段名、类型、取值域、必填/可选。</li>
+<li><strong>评测口径</strong>：正确性、完整性、格式通过率、引用一致性等。</li>
+</ul>
+</li>
+<li><strong>通用模板骨架（可迁移）</strong><ul>
+<li>系统位（原则/安全/风格） → 任务说明 → 约束与输出 schema → 辅助示例（可选）→ 待处理输入。</li>
+</ul>
+</li>
+<li><strong>代表性模板（示例）</strong></li>
+</ul>
+<div class="highlight"><pre><span></span>[信息抽取·结构化输出]
+你是一名信息抽取系统。请从输入中抽取{领域}要素，遵循下述 JSON Schema。
+约束：
+- 不得编造缺失字段；无法确定时输出 null。
+- 返回严格 JSON，禁止多余文本。
+Schema：
+{schema}
+输入：
+{input}
+输出：
+</pre></div>
+<div class="highlight"><pre><span></span>[分类判定·多标签]
+任务：将文本判定为以下标签集合的子集：{labels}。
+规则：
+- 定义遵循：{label_definitions}
+- 若证据不足则输出 []，并给出"rationale"说明（50字以内）。
+输出 JSON：{"labels": string[], "rationale": string}
+文本：
+{input}
+</pre></div>
+<div class="highlight"><pre><span></span>[摘要与格式遵循]
+请生成{风格}摘要，满足：
+- 字数 ≤ {max_tokens}；必须覆盖：{key_points}
+- 输出 Markdown 列表，每项一句话
+输入：
+{input}
+</pre></div>
+<h3 id="%E4%BA%8C%E3%80%81%E5%8F%98%E9%87%8F%E5%8C%96%E4%B8%8E%E5%A4%9A%E6%A0%B7%E5%8C%96%E7%AD%96%E7%95%A5">二、变量化与多样化策略<a class="anchor-link" href="#%E4%BA%8C%E3%80%81%E5%8F%98%E9%87%8F%E5%8C%96%E4%B8%8E%E5%A4%9A%E6%A0%B7%E5%8C%96%E7%AD%96%E7%95%A5">¶</a></h3><ul>
+<li><strong>变量槽位定义</strong><ul>
+<li>领域 {domain}、角色 {role}、风格 {style}、长度 {len}、难度 {difficulty}、语言 {lang}、标签集 {labels}、Schema {schema}、示例 {few_shots} 等。</li>
+</ul>
+</li>
+<li><strong>值域与采样</strong><ul>
+<li>分层采样（按领域/难度/长度），覆盖表控制每一维的最小占比（如每域≥10%、每难度级≥15%）。</li>
+<li>组合设计优先“正交覆盖”（尽量少的组合覆盖多维度）。</li>
+</ul>
+</li>
+<li><strong>多样化维度</strong><ul>
+<li>语义保持改写（同义、语序、指代、信息焦点变换）。</li>
+<li>风格切换（客观/摘要/要点式/说明书式）。</li>
+<li>结构扰动（字段顺序、可选字段缺省），训练鲁棒解析。</li>
+<li>受控噪声（拼写/口语/混排单位/中英夹杂）与负样本（无关文本）。</li>
+<li>跨语言与领域迁移（{lang} ∈ zh/en；{domain} 在财经/医药/政务间切换）。</li>
+<li>复杂度分层（单句→多句→跨段落）。</li>
+</ul>
+</li>
+<li><strong>生成配方（最小流程）</strong><ol>
+<li>准备10–50条高质量“种子样本”。</li>
+<li>设定模板与变量值域，分层采样生成“任务指令”。</li>
+<li>产出候选回答（温度0.2–0.5，多样性受控）。</li>
+<li>进行自动质检+交叉核验，通过者入库；不通过者重写或剔除。</li>
+</ol>
+</li>
+</ul>
+<h3 id="%E4%B8%89%E3%80%81%E5%90%88%E6%88%90%E6%95%B0%E6%8D%AE%E8%B4%A8%E6%A3%80%E4%B8%8E%E5%81%8F%E5%B7%AE%E6%8E%A7%E5%88%B6">三、合成数据质检与偏差控制<a class="anchor-link" href="#%E4%B8%89%E3%80%81%E5%90%88%E6%88%90%E6%95%B0%E6%8D%AE%E8%B4%A8%E6%A3%80%E4%B8%8E%E5%81%8F%E5%B7%AE%E6%8E%A7%E5%88%B6">¶</a></h3><ul>
+<li><strong>自动化结构与格式</strong><ul>
+<li>JSON 严格校验（字段、类型、必填、取值域）。</li>
+<li>解析失败率阈值（如 ≤ 1%）；超阈即回退并修正模板。</li>
+</ul>
+</li>
+<li><strong>正确性与一致性</strong><ul>
+<li>可编程判定：可由规则/脚本核验（如正则、数值范围、枚举）。</li>
+<li>证据对齐：若需要引用，将回答片段与来源文本做重叠率/相似度校验（阈值如≥0.8）。</li>
+<li>语义蕴含检查：输入→输出为“蕴含/中立/矛盾”，拒收矛盾样本。</li>
+</ul>
+</li>
+<li><strong>质量信号与去噪</strong><ul>
+<li>语言流畅度/长度异常、重复率（n-gram 去重）、困惑度异常；自动降权或剔除。</li>
+<li>近重复与数据泄漏：基于嵌入相似度去重（阈值如≥0.95 视为重复）。</li>
+</ul>
+</li>
+<li><strong>安全与隐私</strong><ul>
+<li>敏感字段屏蔽（PII/密钥/医疗隐私），域内关键词黑白名单。</li>
+<li>毒性/违规检测通过率≥99%（不过者全量剔除）。</li>
+</ul>
+</li>
+<li><strong>分布与偏差控制</strong><ul>
+<li>覆盖表监控：领域/语言/长度/难度/标签分布与目标分布的 KL 差异在阈值内。</li>
+<li>头部样本限额与长尾补齐；正/负、易/难比例可控（如 6:4）。</li>
+</ul>
+</li>
+<li><strong>人审抽检</strong><ul>
+<li>分层抽检率（总体1–5%，新模板首批20%），使用统一评分表（正确性/完整性/遵循/安全性），不合格样本反馈回修。</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E5%9B%9B%E3%80%81%E5%B0%8F%E6%A0%B7%E6%9C%AC%E6%9D%A1%E4%BB%B6%E4%B8%8B%E7%9A%84%E5%A2%9E%E7%9B%8A%E9%AA%8C%E8%AF%81">四、小样本条件下的增益验证<a class="anchor-link" href="#%E5%9B%9B%E3%80%81%E5%B0%8F%E6%A0%B7%E6%9C%AC%E6%9D%A1%E4%BB%B6%E4%B8%8B%E7%9A%84%E5%A2%9E%E7%9B%8A%E9%AA%8C%E8%AF%81">¶</a></h3><ul>
+<li><strong>实验设计</strong><ul>
+<li>基线：零样本或少样本（K=10–50）直接训练/推理。</li>
+<li>处理组：在基线上加入经质检的合成数据（比例如1:1、1:3 对真实）。</li>
+<li>统一评测集与指标：任务正确率、格式通过率、指令遵循度、引用一致性。</li>
+</ul>
+</li>
+<li><strong>统计与消融</strong><ul>
+<li>记录 Δ指标（如正确率+X%、格式失败率−Y%）。</li>
+<li>消融：去掉多样化、去掉负样本、去掉跨域，看单项贡献。</li>
+<li>小样本检验：随机种子固定；重复N次取均值±方差，必要时做显著性检验。</li>
+</ul>
+</li>
+<li><strong>推荐配比（经验）</strong><ul>
+<li>抽取/分类：真实:合成 ≈ 1:1～1:3；</li>
+<li>生成/摘要：真实:合成 ≈ 1:0.5～1:2；</li>
+<li>跨域迁移优先保证“结构与格式”的合成比例。</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E4%BA%94%E3%80%81%E5%8F%AF%E5%A4%8D%E7%94%A8%E6%A8%A1%E6%9D%BF%E4%B8%8E%E7%AD%9B%E9%80%89%E6%A0%87%E5%87%86">五、可复用模板与筛选标准<a class="anchor-link" href="#%E4%BA%94%E3%80%81%E5%8F%AF%E5%A4%8D%E7%94%A8%E6%A8%A1%E6%9D%BF%E4%B8%8E%E7%AD%9B%E9%80%89%E6%A0%87%E5%87%86">¶</a></h3><ul>
+<li><strong>模板清单（可直接复用）</strong><ul>
+<li>信息抽取模板（严格 JSON、不可编造）。</li>
+<li>多标签分类模板（定义+证据化 rationale）。</li>
+<li>指令摘要模板（风格与长度可控）。</li>
+<li>步骤化推理模板（逐步列点，禁外部知识）。</li>
+<li>错误定位与修复模板（生成错误说明与修正建议）。</li>
+<li>对比评审模板（在A/B回答间做结构化打分）。</li>
+<li>数据合成器模板（按变量表批量产出种子/难例）。</li>
+<li>规范化重写模板（把自由文本改写为标准 schema）。</li>
+</ul>
+</li>
+<li><strong>入库筛选标准（建议阈值）</strong><ul>
+<li>结构通过率≥99%；</li>
+<li>正确性（可编程校验）≥95%；</li>
+<li>指令遵循度≥98%；</li>
+<li>去重后相似度&lt;0.9；</li>
+<li>安全/隐私 0 容忍（命中即剔除）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E5%85%AD%E3%80%81%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E8%90%BD%E5%9C%B0%E6%B8%85%E5%8D%95%EF%BC%89">六、最小可行流程（落地清单）<a class="anchor-link" href="#%E5%85%AD%E3%80%81%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E8%90%BD%E5%9C%B0%E6%B8%85%E5%8D%95%EF%BC%89">¶</a></h3><ul>
+<li>定义任务卡 → 选模板骨架 → 设变量表与覆盖目标 → 批量合成 → 自动质检 → 分层人审 → 分布与偏差校准 → 小样本训练 → 统一评测与消融 → 归档与版本化（模板/变量/评测）。</li>
+</ul>
+<h3 id="%E9%99%84%EF%BC%9A%E7%A4%BA%E4%BE%8B%E6%A8%A1%E6%9D%BF%E7%89%87%E6%AE%B5">附：示例模板片段<a class="anchor-link" href="#%E9%99%84%EF%BC%9A%E7%A4%BA%E4%BE%8B%E6%A8%A1%E6%9D%BF%E7%89%87%E6%AE%B5">¶</a></h3><div class="highlight"><pre><span></span>[数据合成器·变量化生成]
+目标：生成{domain}领域的信息抽取样本，按{difficulty}难度，语言{lang}。
+输出：包含 input（原文）、target（严格JSON，遵循{schema}）、meta（domain, difficulty, lang）。
+约束：不得虚构超出原文的信息；若缺失则置 null。
+请一次生成 {n} 条，确保不同写作风格与长度分布。
+</pre></div>
+<div class="highlight"><pre><span></span>[对比评审·质量筛选]
+任务：比较候选输出 A/B 对输入的符合度，返回评分 JSON：
+{"winner": "A|B|tie", "scores": {"correctness": 1-5, "completeness": 1-5, "format": 1-5}, "reason": "简述"}
+规则：若两者均未满足 schema 或编造事实，则判为 tie 并给出原因。
+输入：{input}
+A：{output_a}
+B：{output_b}
+</pre></div>
+<p>——</p>
+<ul>
+<li>以上方法聚焦“任务结构化→模板可迁移→变量化扩展→严谨质检→小样本增益验证”的闭环，能在有限标注成本下稳定提升特定子任务表现，且便于复制到新领域与新语言。</li>
+</ul>
 </div>
 </div>
 </div>
@@ -8170,6 +8486,16 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="A7-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88%E4%B8%8E%E5%85%A5%E9%97%A8%E5%AE%9E%E8%B7%B5%EF%BC%9APPO-/-DPO-/-GRPO">A7 对齐算法概览与入门实践：PPO / DPO / GRPO<a class="anchor-link" href="#A7-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88%E4%B8%8E%E5%85%A5%E9%97%A8%E5%AE%9E%E8%B7%B5%EF%BC%9APPO-/-DPO-/-GRPO">¶</a></h2><p>解析三者在信号来源、稳定性与工程代价上的差异：PPO偏在线、信号获取成本高；DPO基于偏好对，路径简洁、易复现；GRPO通过分组奖励提升可控性。完成一个入门级偏好对齐示例，关注偏好数据构造、质量控制与伦理边界。</p>
+<h3 id="1-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88">1 对齐算法概览<a class="anchor-link" href="#1-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88">¶</a></h3><h4 id="1.1-PPO">1.1 PPO<a class="anchor-link" href="#1.1-PPO">¶</a></h4><p>OpenAI《Proximal Policy Optimization Algorithms》</p>
+<h4 id="1.2-DPO">1.2 DPO<a class="anchor-link" href="#1.2-DPO">¶</a></h4><p>Standford《Direct Preference Optimization: Your Language Model is Secretly a Reward Model》</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/16.png" width="800"/>
+</p>
+<h4 id="1.3-GRPO">1.3 GRPO<a class="anchor-link" href="#1.3-GRPO">¶</a></h4><p>DeepSeek-AI《DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models》</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/15.png" width="800"/>
+</p>
+<h3 id="2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">2 入门级偏好对齐示例，关注偏好数据构造、质量控制与伦理边界<a class="anchor-link" href="#2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">¶</a></h3>
 </div>
 </div>
 </div>
@@ -8344,6 +8670,110 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="A9-%E6%89%A9%E5%B1%95%E8%AF%BE%E7%A8%8B-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%B9%BB%E8%A7%89%E7%BC%93%E8%A7%A3%EF%BC%9A%E8%AF%AD%E4%B9%89%E7%86%B5%E4%B8%8E%E5%A4%9A%E6%A8%A1%E5%9E%8B%E5%90%88%E4%BD%9C">A9 扩展课程-大模型幻觉缓解：语义熵与多模型合作<a class="anchor-link" href="#A9-%E6%89%A9%E5%B1%95%E8%AF%BE%E7%A8%8B-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%B9%BB%E8%A7%89%E7%BC%93%E8%A7%A3%EF%BC%9A%E8%AF%AD%E4%B9%89%E7%86%B5%E4%B8%8E%E5%A4%9A%E6%A8%A1%E5%9E%8B%E5%90%88%E4%BD%9C">¶</a></h2><p>采用同义改写得到条件分布，计算语义熵并设定阈值以触发“自动怀疑”；结合多模型一致性裁决降低错误风险；通过对照样例展示前后指标变化，并分析误报与漏报的权衡，给出部署时的建议阈值区间。</p>
+<h3 id="%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9A%E5%90%8C%E4%B9%89%E6%94%B9%E5%86%99%E5%BE%97%E5%88%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E5%B8%83%EF%BC%8C%E8%AE%A1%E7%AE%97%E8%AF%AD%E4%B9%89%E7%86%B5">方法一：同义改写得到条件分布，计算语义熵<a class="anchor-link" href="#%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9A%E5%90%8C%E4%B9%89%E6%94%B9%E5%86%99%E5%BE%97%E5%88%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E5%B8%83%EF%BC%8C%E8%AE%A1%E7%AE%97%E8%AF%AD%E4%B9%89%E7%86%B5">¶</a></h3><p>牛津大学Nature: 《Detecting hallucinations in large language models using semantic entropy》</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/12.png" width="800"/>
+</p>
+<p>图1 | 语义熵与虚构检测概述</p>
+<p>a. 基于熵的朴素不确定性度量会计算精确答案的变异程度，将“巴黎”“是巴黎”“法国的首都巴黎”视为不同答案。但这一方法不适用于部分语言任务——在这类任务中，有时不同表述的答案含义相同。我们提出的语义熵会先将含义相同的答案聚类，再计算熵值。<strong>语义熵值低</strong>表明大型语言模型（LLM）对答案的含义具有较高信心。</p>
+<p>b. 语义熵还可用于检测较长文本中的虚构内容。我们会自动将模型生成的长答案分解为多个“事实单元”（factoid）。对于每个事实单元，由一个LLM生成可能对应该事实单元的问题；随后，原始LLM针对这些问题生成M个可能的答案。最终，我们会计算每个特定问题对应的所有答案（包括原始事实单元）的语义熵。若某事实单元相关问题的<strong>平均语义熵值高</strong>，则表明该事实单元可能是虚构内容。如图所示，语义熵将“事实1”（Fact 1）归类为“可能非虚构”，因为尽管各答案表述差异极大，但含义往往一致——而这种一致性是基于熵的朴素度量方法会遗漏的。</p>
+<!-- （注：“confabulation”在人工智能与认知科学领域特指模型或个体在信息缺失/错误时，生成看似合理但与事实不符的内容，此处译为“虚构”以准确反映技术场景含义；“factoid”指文本中可独立验证的最小事实单元，译为“事实单元”以体现其颗粒度特征。） -->
+<ul>
+<li><strong>核心思想</strong>：通过对同一问题做多种同义改写，采样得到模型回答在“语义空间”的条件分布。如果回答集中到少数语义簇，说明语义确定性高；若分散到多个相互冲突的语义簇，说明不确定性高，幻觉风险上升。</li>
+<li><strong>步骤</strong><ol>
+<li>同义改写：对原始查询生成 M 条等价表述（建议 M=8–16，兼顾稳定性与成本）。</li>
+<li>回答采样：用固定温度（建议 temperature≈0.2–0.5）获取每个改写的回答。</li>
+<li>语义聚类：用文本嵌入计算回答两两相似度，将相似回答归为同一“语义簇”（阈值可用余弦相似度≥0.85–0.9）。</li>
+<li>概率估计：簇概率 p_i = 该簇回答数量 / 总回答数。</li>
+<li>语义熵：H = −∑ p_i log p_i。为便于阈值设置，可做归一化 H_norm = H / log K（K 为簇数上界或观测到的簇数），使 H_norm∈[0,1]。</li>
+<li>阈值触发“自动怀疑”：当 H_norm 超过阈值 T，则判定不确定，转入二次校验流程（如检索增强、追问澄清、多模型一致性裁决或人工复核）。</li>
+</ol>
+</li>
+</ul>
+<h3 id="%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9A%E5%A4%9A%E6%A8%A1%E5%9E%8B%E4%B8%80%E8%87%B4%E6%80%A7%E8%A3%81%E5%86%B3%EF%BC%88%E9%99%8D%E4%BD%8E%E5%8D%95%E4%B8%80%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E6%80%A7%E9%94%99%E8%AF%AF%EF%BC%89">方法二：多模型一致性裁决（降低单一模型系统性错误）<a class="anchor-link" href="#%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9A%E5%A4%9A%E6%A8%A1%E5%9E%8B%E4%B8%80%E8%87%B4%E6%80%A7%E8%A3%81%E5%86%B3%EF%BC%88%E9%99%8D%E4%BD%8E%E5%8D%95%E4%B8%80%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E6%80%A7%E9%94%99%E8%AF%AF%EF%BC%89">¶</a></h3><ul>
+<li><strong>核心思想</strong>：不同模型的错因和偏差不完全相同。对同一问题并行询问 N 个模型（或同一模型不同解码策略），用语义一致性与多数原则裁决，减少单点错误。</li>
+<li><strong>步骤</strong><ol>
+<li>多模型回答：选择 N=2–3 个异构模型（如一个主模型+一个不同家族备选），或同一模型的多次少温采样。</li>
+<li>语义对齐：同上，用嵌入聚类衡量回答是否同义。</li>
+<li>一致性评分：一致性=最大簇占比；若一致性低于阈值（如 &lt;60–70%），判定为高风险。</li>
+<li>决策顺序：优先采用“有出处的答案”（带可验证证据或检索来源）→ 多数语义簇 → 不一致则触发检索/追问或人工复核。</li>
+</ol>
+</li>
+</ul>
+<h3 id="%E6%8C%87%E6%A0%87%E4%B8%8E%E5%AF%B9%E7%85%A7%E6%A0%B7%E4%BE%8B">指标与对照样例<a class="anchor-link" href="#%E6%8C%87%E6%A0%87%E4%B8%8E%E5%AF%B9%E7%85%A7%E6%A0%B7%E4%BE%8B">¶</a></h3><ul>
+<li><strong>评价指标</strong>：<ul>
+<li>幻觉率（Hallucination Rate）：错误且无依据的回答占比</li>
+<li>精确率/召回率：基于人工标注或可验证题集</li>
+<li>拒答率：因高不确定而触发“怀疑”的比例</li>
+<li>平均延迟与成本：并发调用带来的时延与费用变化</li>
+</ul>
+</li>
+<li><strong>样例 1（事实问答）</strong><ul>
+<li>问：澳大利亚的首都是哪里？</li>
+<li>基线（无防护）：单次回答常见“悉尼”（错误）；幻觉率较高。</li>
+<li>语义熵：同义改写后出现两大簇“堪培拉”（正确）与“悉尼”（错误），H_norm 高于阈值→触发检索增强；检索返回官方页面后收敛到“堪培拉”。</li>
+<li>多模型一致性：两个模型均回答“堪培拉”，一致性高→直接通过。</li>
+</ul>
+</li>
+<li><strong>示例性整体数据（内部验证集，示意）</strong><ul>
+<li>基线：幻觉率 8.1%，精确率 90.5%，平均延迟 1.0x，成本 1.0x</li>
+<li><ul>
+<li>语义熵触发（T=0.45）：幻觉率 4.0%，精确率 94.3%，拒答率 6.8%，延迟 1.25x，成本 1.2x</li>
+</ul>
+</li>
+<li><ul>
+<li>多模型一致性（N=2）：幻觉率 2.6%，精确率 96.1%，拒答率 8.9%，延迟 1.45x，成本 1.5x</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E9%98%88%E5%80%BC%E8%AE%BE%E7%BD%AE%E4%B8%8E%E6%9D%83%E8%A1%A1">阈值设置与权衡<a class="anchor-link" href="#%E9%98%88%E5%80%BC%E8%AE%BE%E7%BD%AE%E4%B8%8E%E6%9D%83%E8%A1%A1">¶</a></h3><ul>
+<li><strong>语义熵阈值（归一化 H_norm）</strong><ul>
+<li>建议区间：T ∈ [0.35, 0.55]。</li>
+<li>低阈值（如 0.35）：更敏感，误报多、漏报少；适合高风险/合规场景。</li>
+<li>高阈值（如 0.5）：更保守，误报少、漏报多；适合追求流畅体验的泛用场景。</li>
+</ul>
+</li>
+<li><strong>一致性阈值</strong><ul>
+<li>一致性=最大语义簇占比。</li>
+<li>建议区间：C ∈ [0.6, 0.75]。低于 C 触发“怀疑”。</li>
+<li>对应权衡与上类似：C 越高越严格，拒答/回退更多但更安全。</li>
+</ul>
+</li>
+<li><strong>联合决策（推荐）</strong><ul>
+<li>触发条件例：H_norm ≥ T 或 一致性 &lt; C → 启用检索增强或改问澄清；若仍不通过，再转人工。</li>
+<li>也可使用分层：先看一致性，再看语义熵，以减少不必要的并发计算。</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E9%83%A8%E7%BD%B2%E5%BB%BA%E8%AE%AE">部署建议<a class="anchor-link" href="#%E9%83%A8%E7%BD%B2%E5%BB%BA%E8%AE%AE">¶</a></h3><ul>
+<li><strong>同义改写生成</strong>：可用小模型低成本生成，主模型仅用于回答与裁决。对高频问题做改写与回答结果缓存。</li>
+<li><strong>聚类实现</strong>：用向量数据库或本地向量库；相似度阈值从 0.85 起步微调。</li>
+<li><strong>成本与延迟控制</strong>：<ul>
+<li>优先语义熵（单模型多表述）→ 再走多模型一致性（仅在必要时启用）。</li>
+<li>动态配额：对低风险/低价值问题使用较高阈值或降采样。</li>
+</ul>
+</li>
+<li><strong>数据闭环</strong>：上线后记录被“怀疑”的样本与最终裁决，定期做 ROC/PR 分析，更新 T 与 C。</li>
+<li><strong>解释性与可用性</strong>：向用户呈现“已加验真”标记与可点击的依据来源链接；在拒答时说明不确定原因并建议可操作的重述方式。</li>
+</ul>
+<h3 id="%E8%AF%AF%E6%8A%A5%E4%B8%8E%E6%BC%8F%E6%8A%A5%E7%9A%84%E6%9D%83%E8%A1%A1">误报与漏报的权衡<a class="anchor-link" href="#%E8%AF%AF%E6%8A%A5%E4%B8%8E%E6%BC%8F%E6%8A%A5%E7%9A%84%E6%9D%83%E8%A1%A1">¶</a></h3><ul>
+<li><strong>误报（无错被判不确定）</strong>：增加拒答与成本，但能显著降低高风险错误；可通过提高 T 或 C、加入证据优先策略缓解。</li>
+<li><strong>漏报（有错未被拦截）</strong>：对高风险场景不可接受；通过降低 T、提高 C、引入检索/规则校验与人工复核降低。</li>
+<li><strong>实践建议</strong>：<ul>
+<li>一般问答：T≈0.45，C≈0.65；</li>
+<li>金融/医疗等高风险：T≈0.35–0.4，C≈0.7–0.75；</li>
+<li>资源受限/延迟敏感：T≈0.5–0.55，C≈0.6，并限制 M 与 N。</li>
+</ul>
+</li>
+</ul>
+<h3 id="%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E5%8F%AF%E7%9B%B4%E6%8E%A5%E8%90%BD%E5%9C%B0%EF%BC%89">最小可行流程（可直接落地）<a class="anchor-link" href="#%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E5%8F%AF%E7%9B%B4%E6%8E%A5%E8%90%BD%E5%9C%B0%EF%BC%89">¶</a></h3><ul>
+<li>输入 → 同义改写（M 条） → 模型回答 → 语义聚类与 H_norm</li>
+<li>若 H_norm ≥ T → 检索增强/追问澄清 → 若仍不确定 → 多模型一致性（N 个）</li>
+<li>若一致性 &lt; C → 标记高风险并转人工；否则输出答案并附证据</li>
+</ul>
+<p>以上配置在多数通用问答中能在可控的延迟与成本内，将幻觉率从约 8% 压低到 2–4% 区间；具体阈值仍需结合业务数据以 ROC/PR 曲线微调。</p>
 </div>
 </div>
 </div>
