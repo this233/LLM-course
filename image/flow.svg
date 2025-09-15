@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#455A64"/>
+    </marker>
+    <style>
+      .node { stroke: #455A64; stroke-width: 1.5; }
+      .phase-plan { fill: #E3F2FD; }
+      .phase-gen { fill: #E8F5E9; }
+      .phase-qc { fill: #FFF3E0; }
+      .phase-train { fill: #F3E5F5; }
+      .phase-archive { fill: #ECEFF1; }
+      .title { font: 600 14px/1.2 "Segoe UI", "PingFang SC", "Noto Sans SC", Arial, sans-serif; fill: #263238; text-anchor: middle; }
+      .subtitle { font: 12px/1.2 "Segoe UI", "PingFang SC", "Noto Sans SC", Arial, sans-serif; fill: #546E7A; text-anchor: middle; }
+      .arrow { stroke: #455A64; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .arrow-dashed { stroke-dasharray: 6 6; }
+      .caption { font: 700 16px/1.2 "Segoe UI", "PingFang SC", "Noto Sans SC", Arial, sans-serif; fill: #263238; }
+    </style>
+  </defs>
+
+  <text x="24" y="28" class="caption">小样本数据合成闭环流程（说明性示意）</text>
+
+  <!-- Row 1 positions: x = 40, 240, 440, 640, 840; y = 60 -->
+  <g transform="translate(40,60)">
+    <rect class="node phase-plan" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">定义任务卡</text>
+    <text class="subtitle" x="90" y="50">字段/约束/评测口径</text>
+  </g>
+
+  <g transform="translate(240,60)">
+    <rect class="node phase-plan" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">选择模板骨架</text>
+    <text class="subtitle" x="90" y="50">系统位/任务/Schema/示例</text>
+  </g>
+
+  <g transform="translate(440,60)">
+    <rect class="node phase-plan" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">设变量表与覆盖</text>
+    <text class="subtitle" x="90" y="50">领域/难度/语言/长度</text>
+  </g>
+
+  <g transform="translate(640,60)">
+    <rect class="node phase-gen" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">批量合成</text>
+    <text class="subtitle" x="90" y="50">受控温度/多样化</text>
+  </g>
+
+  <g transform="translate(840,60)">
+    <rect class="node phase-qc" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">自动质检</text>
+    <text class="subtitle" x="90" y="50">结构/正确性/安全</text>
+  </g>
+
+  <!-- Row 1 arrows -->
+  <line class="arrow" x1="220" y1="95" x2="240" y2="95"/>
+  <line class="arrow" x1="420" y1="95" x2="440" y2="95"/>
+  <line class="arrow" x1="620" y1="95" x2="640" y2="95"/>
+  <line class="arrow" x1="820" y1="95" x2="840" y2="95"/>
+
+  <!-- Down and wrap to row 2 -->
+  <path class="arrow" d="M930,130 L930,190 L130,190 L130,220"/>
+
+  <!-- Row 2 positions: x = 40, 240, 440, 640, 840; y = 220 -->
+  <g transform="translate(40,220)">
+    <rect class="node phase-qc" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">分层人审</text>
+    <text class="subtitle" x="90" y="50">抽检/反馈回修</text>
+  </g>
+
+  <g transform="translate(240,220)">
+    <rect class="node phase-qc" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">分布与偏差校准</text>
+    <text class="subtitle" x="90" y="50">覆盖表/KL监控</text>
+  </g>
+
+  <g transform="translate(440,220)">
+    <rect class="node phase-train" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">小样本训练</text>
+    <text class="subtitle" x="90" y="50">真实:合成配比</text>
+  </g>
+
+  <g transform="translate(640,220)">
+    <rect class="node phase-train" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">统一评测与消融</text>
+    <text class="subtitle" x="90" y="50">正确率/格式/显著性</text>
+  </g>
+
+  <g transform="translate(840,220)">
+    <rect class="node phase-archive" width="180" height="70" rx="10"/>
+    <text class="title" x="90" y="30">归档与版本化</text>
+    <text class="subtitle" x="90" y="50">模板/变量/评测</text>
+  </g>
+
+  <!-- Row 2 arrows -->
+  <line class="arrow" x1="220" y1="255" x2="240" y2="255"/>
+  <line class="arrow" x1="420" y1="255" x2="440" y2="255"/>
+  <line class="arrow" x1="620" y1="255" x2="640" y2="255"/>
+  <line class="arrow" x1="820" y1="255" x2="840" y2="255"/>
+
+  <!-- Feedback loop back to start -->
+  <path class="arrow arrow-dashed" d="M930,290 C980,360 980,360 930,370 L180,370 C130,370 120,360 120,320 L120,220" />
+
+</svg>
