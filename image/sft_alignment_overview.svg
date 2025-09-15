@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <marker id="end-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4A5568" />
+    </marker>
+    <style>
+      .title { font: 700 28px/1.2 Arial, Helvetica, sans-serif; fill: #1A202C; }
+      .subtitle { font: 600 16px/1.4 Arial, Helvetica, sans-serif; fill: #4A5568; }
+      .section-label { font: 700 18px/1.2 Arial, Helvetica, sans-serif; fill: #2D3748; }
+      .box-label { font: 700 16px/1.2 Arial, Helvetica, sans-serif; fill: #1A202C; }
+      .box-desc { font: 400 14px/1.4 Arial, Helvetica, sans-serif; fill: #2D3748; }
+      .note { font: 400 12px/1.3 Arial, Helvetica, sans-serif; fill: #4A5568; }
+      .small { font: 400 12px/1.3 Arial, Helvetica, sans-serif; fill: #2D3748; }
+      .muted { fill: #4A5568; }
+      .pretrain { fill: #E8F1FB; stroke: #2B6CB0; }
+      .sft { fill: #E6FFFA; stroke: #2C7A7B; }
+      .align { fill: #F3E8FF; stroke: #6B46C1; }
+      .fpft { fill: #FFF7ED; stroke: #C05621; }
+      .peft { fill: #ECFDF5; stroke: #2F855A; }
+      .base { fill: #EDF2F7; stroke: #4A5568; }
+      .pill { fill: #F7FAFC; stroke: #A0AEC0; }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="40" y="48" class="title">LLM 迁移与对齐流程（SFT、对齐、FPFT 与 PEFT）</text>
+  <text x="40" y="72" class="subtitle">从预训练到监督微调，再到偏好对齐；比较全参数微调与高效参数微调的适用性</text>
+
+  <!-- Top pipeline: Pretraining -> SFT -> Alignment -->
+  <g transform="translate(0, 20)">
+    <rect x="60" y="80" rx="10" ry="10" width="260" height="70" class="pretrain" stroke-width="2" />
+    <text x="190" y="110" text-anchor="middle" class="box-label">预训练（Pretraining）</text>
+    <text x="190" y="132" text-anchor="middle" class="note">通用大规模语料，学习通用能力</text>
+
+    <line x1="320" y1="115" x2="470" y2="115" stroke="#4A5568" stroke-width="2.5" marker-end="url(#end-arrow)" />
+
+    <rect x="470" y="80" rx="10" ry="10" width="260" height="70" class="sft" stroke-width="2" />
+    <text x="600" y="110" text-anchor="middle" class="box-label">监督微调（SFT）</text>
+    <text x="600" y="132" text-anchor="middle" class="note">人类示范/指令数据，学会“像样表达”</text>
+
+    <line x1="730" y1="115" x2="880" y2="115" stroke="#4A5568" stroke-width="2.5" marker-end="url(#end-arrow)" />
+
+    <rect x="880" y="80" rx="10" ry="10" width="260" height="70" class="align" stroke-width="2" />
+    <text x="1010" y="110" text-anchor="middle" class="box-label">对齐（偏好优化）</text>
+    <text x="1010" y="132" text-anchor="middle" class="note">RLHF / DPO / 宪法式原则，学会“按偏好做事”</text>
+  </g>
+
+  <!-- Distribution shift section -->
+  <g transform="translate(0, 0)">
+    <text x="60" y="210" class="section-label">分布偏移（shift）类型与迁移目标</text>
+
+    <rect x="60" y="230" rx="16" ry="16" width="320" height="60" class="pill" stroke-width="1.5" />
+    <text x="80" y="256" class="box-label">输入分布偏移（Covariate shift）</text>
+    <text x="80" y="278" class="small">风格 / 领域 / 格式变化；模型需适应新输入分布</text>
+
+    <rect x="420" y="230" rx="16" ry="16" width="320" height="60" class="pill" stroke-width="1.5" />
+    <text x="440" y="256" class="box-label">标签分布偏移（Label shift）</text>
+    <text x="440" y="278" class="small">答案总体分布变化；如更短、更谨慎</text>
+
+    <rect x="780" y="230" rx="16" ry="16" width="360" height="60" class="pill" stroke-width="1.5" />
+    <text x="800" y="256" class="box-label">概念偏移（Concept shift）</text>
+    <text x="800" y="278" class="small">“好答案”的判定标准变化；偏好与安全规范</text>
+  </g>
+
+  <!-- Strategy compare: FPFT vs PEFT -->
+  <g transform="translate(0, 20)">
+    <text x="60" y="330" class="section-label">微调策略选择（何时 FPFT，何时 PEFT）</text>
+
+    <!-- FPFT box -->
+    <rect x="60" y="350" rx="12" ry="12" width="500" height="220" class="fpft" stroke-width="2" />
+    <text x="80" y="378" class="box-label" fill="#9C4221">FPFT（全参数微调）</text>
+    <g class="box-desc">
+      <circle cx="84" cy="402" r="3" fill="#1A202C" /><text x="96" y="406">更新全部参数，容量最大，可深度重塑表示与推理</text>
+      <circle cx="84" cy="428" r="3" fill="#1A202C" /><text x="96" y="432">训练/部署成本高，易遗忘通用能力</text>
+      <circle cx="84" cy="454" r="3" fill="#1A202C" /><text x="96" y="458">适用于巨大或结构性分布偏移、极致性能、架构改动</text>
+      <circle cx="84" cy="480" r="3" fill="#1A202C" /><text x="96" y="484">单一高性能定制，数据/算力充足时更有把握</text>
+    </g>
+
+    <!-- PEFT box -->
+    <rect x="640" y="350" rx="12" ry="12" width="500" height="220" class="peft" stroke-width="2" />
+    <text x="660" y="378" class="box-label" fill="#276749">PEFT（高效参数微调，如 LoRA / QLoRA / Adapter）</text>
+    <g class="box-desc">
+      <circle cx="664" cy="402" r="3" fill="#1A202C" /><text x="676" y="406">冻结骨干，只训练小量增量参数（低秩/小模块）</text>
+      <circle cx="664" cy="428" r="3" fill="#1A202C" /><text x="676" y="432">训练/部署成本低，易维护，保留基座通用能力</text>
+      <circle cx="664" cy="454" r="3" fill="#1A202C" /><text x="676" y="458">适用于中等强度的输入风格/偏好与安全校正</text>
+      <circle cx="664" cy="480" r="3" fill="#1A202C" /><text x="676" y="484">多域多版本可即插即用，可并行挂多适配器</text>
+    </g>
+  </g>
+
+  <!-- Multi-stage flow recommendation -->
+  <g transform="translate(0, 40)">
+    <text x="60" y="600" class="section-label">常见有效的多阶段流程</text>
+
+    <rect x="60" y="620" rx="10" ry="10" width="240" height="56" class="base" stroke-width="1.5" />
+    <text x="180" y="648" text-anchor="middle" class="box-label">基座（Base Model）</text>
+
+    <line x1="300" y1="648" x2="330" y2="648" stroke="#4A5568" stroke-width="2.5" marker-end="url(#end-arrow)" />
+
+    <rect x="330" y="620" rx="10" ry="10" width="260" height="56" class="sft" stroke-width="1.5" />
+    <text x="460" y="648" text-anchor="middle" class="box-label">SFT（PEFT / QLoRA）</text>
+
+    <line x1="590" y1="648" x2="620" y2="648" stroke="#4A5568" stroke-width="2.5" marker-end="url(#end-arrow)" />
+
+    <rect x="620" y="620" rx="10" ry="10" width="280" height="56" class="align" stroke-width="1.5" />
+    <text x="760" y="648" text-anchor="middle" class="box-label">偏好优化（RLHF / DPO / 宪法式）</text>
+
+    <line x1="900" y1="648" x2="930" y2="648" stroke="#4A5568" stroke-width="2.5" marker-end="url(#end-arrow)" />
+
+    <rect x="930" y="620" rx="10" ry="10" width="210" height="56" class="fpft" stroke-width="1.5" />
+    <text x="1035" y="648" text-anchor="middle" class="box-label">必要时：局部解冻 / FPFT</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="40" y="740" class="note">注：SFT 主要解决“会说”；对齐主要解决“说得合意与安全”。PEFT 常为工业默认路径，FPFT 用于巨大分布偏移或极致性能追求。</text>
+</svg> 
