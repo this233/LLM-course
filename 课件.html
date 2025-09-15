@@ -7773,7 +7773,7 @@ GPT‑4o 是一种<strong>自回归全模态模型</strong>（参数规模200B�
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84%E4%B8%8E%E8%AE%AD%E7%BB%83%E8%8C%83%E5%BC%8F">3 大模型架构与训练范式<a class="anchor-link" href="#3-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84%E4%B8%8E%E8%AE%AD%E7%BB%83%E8%8C%83%E5%BC%8F">¶</a></h3><p>为了帮助后续理解大模型微调，此处基于国内顶尖开源模型Qwen和DeepSeek简要介绍大模型架构与训练范式。</p>
+<h2 id="A1-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84%E4%B8%8E%E8%AE%AD%E7%BB%83%E8%8C%83%E5%BC%8F">A1 大模型架构与训练范式<a class="anchor-link" href="#A1-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84%E4%B8%8E%E8%AE%AD%E7%BB%83%E8%8C%83%E5%BC%8F">¶</a></h2><p>为了帮助后续理解大模型微调，此处基于国内顶尖开源模型Qwen和DeepSeek简要介绍大模型架构与训练范式。</p>
 <h4 id="2025.01%EF%BC%8C%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4%E5%8F%91%E5%B8%83Qwen2.5-VL">2025.01，阿里巴巴发布Qwen2.5-VL<a class="anchor-link" href="#2025.01%EF%BC%8C%E9%98%BF%E9%87%8C%E5%B7%B4%E5%B7%B4%E5%8F%91%E5%B8%83Qwen2.5-VL">¶</a></h4><h5 id="%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84">模型架构<a class="anchor-link" href="#%E6%A8%A1%E5%9E%8B%E6%9E%B6%E6%9E%84">¶</a></h5><p align="center">
 <img alt="No description has been provided for this image" src="./image/5.png" width="1000"/>
 </p>
@@ -7876,18 +7876,26 @@ GPT‑4o 是一种<strong>自回归全模态模型</strong>（参数规模200B�
 <p align="center">
 <img alt="No description has been provided for this image" src="./image/8.png" width="600"/>
 </p>
-- 预训练（1）（与Qwen2-VL，预训练数据量 1.2T -&gt; 4T）
-  - 阶段 I：视觉预训练（仅训练 ViT）
-    - 数据：图像字幕、视觉知识、OCR。
-    - 目标：让视觉特征更好地对齐语言空间。
-  - 阶段 II：多模态预训练（全参数）
-    - 数据：图文交错、VQA、视频、数学、Agent、纯文本。
-    - 工程：按送入 LLM 的长度统一打包到 8,192 tokens；保持原生分辨率与窗口注意力，平衡算力。
-  - 阶段 III：长上下文预训练
-    - 数据：长视频、长文档、长序列代理任务。
-    - 配置：序列长度 32,768；动态 FPS；MRoPE 的时间维与绝对时间对齐，增强长程推理稳定性。
-
 <ul>
+<li><p>预训练（1）（与Qwen2-VL，预训练数据量 1.2T -&gt; 4T）</p>
+<ul>
+<li>阶段 I：视觉预训练（仅训练 ViT）<ul>
+<li>数据：图像字幕、视觉知识、OCR。</li>
+<li>目标：让视觉特征更好地对齐语言空间。</li>
+</ul>
+</li>
+<li>阶段 II：多模态预训练（全参数）<ul>
+<li>数据：图文交错、VQA、视频、数学、Agent、纯文本。</li>
+<li>工程：按送入 LLM 的长度统一打包到 8,192 tokens；保持原生分辨率与窗口注意力，平衡算力。</li>
+</ul>
+</li>
+<li>阶段 III：长上下文预训练<ul>
+<li>数据：长视频、长文档、长序列代理任务。</li>
+<li>配置：序列长度 32,768；动态 FPS；MRoPE 的时间维与绝对时间对齐，增强长程推理稳定性。</li>
+</ul>
+</li>
+</ul>
+</li>
 <li><p>数据管线（支撑面）</p>
 <ul>
 <li>图文交错：先常规清洗，再由内部评估模型从文本质量、图文相关性、互补性、信息密度平衡四维打分筛选。</li>
@@ -7928,12 +7936,9 @@ GPT‑4o 是一种<strong>自回归全模态模型</strong>（参数规模200B�
 <p align="center">
 <img alt="No description has been provided for this image" src="./image/6.png" width="800"/>
 </p>
-要概述一下《DeepSeek R1 技术报告》中所描述的 DeepSeek R1 流程。这份报告既是一个有趣的案例研究，也是开发推理大型语言模型的蓝图。
+《DeepSeek R1 技术报告》既是一个有趣的案例研究，也是开发推理大型语言模型的蓝图。
 需要注意的是，DeepSeek 并没有发布单一的 R1 推理模型，而是推出了三种不同的变体：DeepSeek-R1-Zero、DeepSeek-R1 和 DeepSeek-R1-Distill。
 
-<p>根据该技术报告中的描述，我在下面的图表中总结了这些模型的开发过程。
-DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开发过程。
-接下来，让我们简要回顾一下上面图表中展示的过程。更多细节将在下一部分中介绍，在那里我们会讨论构建和改进推理模型的四种主要方法。</p>
 <p><strong>（1）DeepSeek-R1-Zero：</strong> 该模型基于 2024 年 12 月发布的 6710 亿参数预训练模型 DeepSeek-V3 基础模型。研究团队使用带有两种奖励的强化学习（RL）对其进行训练。这种方法被称为 “冷启动” 训练，因为它没有包含监督微调（SFT）步骤，而这一步骤通常是基于人类反馈的强化学习（RLHF）的一部分。</p>
 <p><strong>（2）DeepSeek-R1：</strong> 这是 DeepSeek 的旗舰推理模型，以 DeepSeek-R1-Zero 为基础构建而成。该团队通过额外的监督微调阶段和进一步的强化学习训练对其进行了优化，在 “冷启动” 的 R1-Zero 模型基础上进行了改进。</p>
 <p><strong>（3）DeepSeek-R1-Distill：</strong> 利用之前步骤中生成的监督微调数据，DeepSeek 团队对 Qwen 和 Llama 模型进行了微调，以增强它们的推理能力。虽然这并非传统意义上的蒸馏，但该过程包括使用更大的 DeepSeek-R1 6710 亿参数模型的输出对更小的模型（Llama 80 亿和 700 亿参数模型，以及 Qwen 15 亿–300 亿参数模型）进行训练。</p>
@@ -7946,13 +7951,13 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <img alt="No description has been provided for this image" src="./image/3.jpg" width="800"/>
 </p>
 <h5 id="%E9%A2%84%E8%AE%AD%E7%BB%83">预训练<a class="anchor-link" href="#%E9%A2%84%E8%AE%AD%E7%BB%83">¶</a></h5><p>在预训练方面，Qwen3 的<strong>数据集相比 Qwen2.5 有了显著扩展</strong>。Qwen2.5是在 18T 个 token 上进行预训练的，而 Qwen3 使用的数据量几乎是其两倍，达到了约 36 T个 token，涵盖了 119 种语言和方言。
-为了构建这个庞大的数据集，我们不仅从网络上收集数据，还从 PDF 文档中提取信息。我们使用 Qwen2.5-VL 从这些文档中提取文本，并用 Qwen2.5 改进提取内容的质量。
-为了增加数学和代码数据的数量，我们利用 Qwen2.5-Math 和 Qwen2.5-Coder 这两个数学和代码领域的专家模型合成数据，合成了包括教科书、问答对以及代码片段等多种形式的数据。</p>
+为了构建这个庞大的数据集，Qwen3不仅从网络上收集数据，还从 PDF 文档中提取信息。Qwen3使用 Qwen2.5-VL 从这些文档中提取文本，并用 Qwen2.5 改进提取内容的质量。
+为了增加数学和代码数据的数量，Qwen3利用 Qwen2.5-Math 和 Qwen2.5-Coder 这两个数学和代码领域的专家模型合成数据，合成了包括教科书、问答对以及代码片段等多种形式的数据。</p>
 <p>预训练过程分为三个阶段。</p>
 <ol>
 <li>在第一阶段（S1），模型在超过 30 T个 token 上进行了预训练，上下文长度为 4K token。这一阶段为模型提供了基本的语言技能和通用知识。</li>
-<li>在第二阶段（S2），我们通过增加知识密集型数据（如 STEM、编程和推理任务）的比例来改进数据集，随后模型又在额外的 5 万亿个 token 上进行了预训练。</li>
-<li>在最后阶段，我们使用高质量的长上下文数据将上下文长度扩展到 32K token，确保模型能够有效地处理更长的输入。</li>
+<li>在第二阶段（S2），通过增加知识密集型数据（如 STEM、编程和推理任务）的比例来改进数据集，随后模型又在额外的 5 万亿个 token 上进行了预训练。</li>
+<li>在最后阶段，使用高质量的长上下文数据将上下文长度扩展到 32K token，确保模型能够有效地处理更长的输入。</li>
 </ol>
 <p>由于模型架构的改进、训练数据的增加以及更有效的训练方法，Qwen3 Dense 基础模型的整体性能与参数更多的Qwen2.5基础模型相当。</p>
 <ul>
@@ -7960,12 +7965,12 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <li>特别是在 STEM、编码和推理等领域，Qwen3 Dense 基础模型的表现甚至超过了更大规模的 Qwen2.5 模型。</li>
 <li>对于 Qwen3 MoE 基础模型，它们在仅使用 10% 激活参数的情况下达到了与 Qwen2.5 Dense 基础模型相似的性能。这带来了训练和推理成本的显著节省。</li>
 </ul>
-<h5 id="%E5%90%8E%E8%AE%AD%E7%BB%83">后训练<a class="anchor-link" href="#%E5%90%8E%E8%AE%AD%E7%BB%83">¶</a></h5><p>为了开发能够同时具备思考推理和快速响应能力的混合模型，我们实施了一个四阶段的训练流程。该流程包括：（1）长思维链冷启动，（2）长思维链强化学习，（3）思维模式融合，以及（4）通用强化学习。</p>
+<h5 id="%E5%90%8E%E8%AE%AD%E7%BB%83">后训练<a class="anchor-link" href="#%E5%90%8E%E8%AE%AD%E7%BB%83">¶</a></h5><p>为了开发能够同时具备思考推理和快速响应能力的混合模型，Qwen3实施了一个四阶段的训练流程。该流程包括：（1）长思维链冷启动，（2）长思维链强化学习，（3）思维模式融合，以及（4）通用强化学习。</p>
 <ol>
-<li>在第一阶段，我们使用多样的的长思维链数据对模型进行了微调，涵盖了数学、代码、逻辑推理和 STEM 问题等多种任务和领域。这一过程旨在为模型配备基本的推理能力。</li>
+<li>在第一阶段，使用多样的的长思维链数据对模型进行了微调，涵盖了数学、代码、逻辑推理和 STEM 问题等多种任务和领域。这一过程旨在为模型配备基本的推理能力。</li>
 <li>第二阶段的重点是大规模强化学习，利用基于规则的奖励来增强模型的探索和钻研能力。</li>
-<li>在第三阶段，我们在一份包括长思维链数据和常用的指令微调数据的组合数据上对模型进行微调，将非思考模式整合到思考模型中。确保了推理和快速响应能力的无缝结合。</li>
-<li>最后，在第四阶段，我们在包括指令遵循、格式遵循和 Agent 能力等在内的 20 多个通用领域的任务上应用了强化学习，以进一步增强模型的通用能力并纠正不良行为。</li>
+<li>在第三阶段，在一份包括长思维链数据和常用的指令微调数据的组合数据上对模型进行微调，将非思考模式整合到思考模型中。确保了推理和快速响应能力的无缝结合。</li>
+<li>最后，在第四阶段，在包括指令遵循、格式遵循和 Agent 能力等在内的 20 多个通用领域的任务上应用了强化学习，以进一步增强模型的通用能力并纠正不良行为。</li>
 </ol>
 </div>
 </div>
@@ -7977,7 +7982,7 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%EF%BC%9A%E5%BE%AE%E8%B0%83%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%E4%B8%8E%E5%9F%BA%E6%9C%AC%E6%80%9D%E8%B7%AF">A1 基本原理：微调的核心价值与基本思路<a class="anchor-link" href="#A1-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%EF%BC%9A%E5%BE%AE%E8%B0%83%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%E4%B8%8E%E5%9F%BA%E6%9C%AC%E6%80%9D%E8%B7%AF">¶</a></h2><p>从迁移学习与分布偏移出发，说明监督微调（SFT）与对齐的关系，明确全参数微调（FPFT）与高效参数微调（PEFT）的本质差异与边界条件；通过小规模示例说明目标函数、学习率与批大小等关键超参对收敛与泛化的作用，并给出观察与记录要点。</p>
+<h2 id="A2-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%EF%BC%9A%E5%BE%AE%E8%B0%83%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%E4%B8%8E%E5%9F%BA%E6%9C%AC%E6%80%9D%E8%B7%AF">A2 基本原理：微调的核心价值与基本思路<a class="anchor-link" href="#A2-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86%EF%BC%9A%E5%BE%AE%E8%B0%83%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%E4%B8%8E%E5%9F%BA%E6%9C%AC%E6%80%9D%E8%B7%AF">¶</a></h2><p>从迁移学习与分布偏移出发，说明监督微调（SFT）与对齐的关系，明确全参数微调（FPFT）与高效参数微调（PEFT）的本质差异与边界条件；通过小规模示例说明目标函数、学习率与批大小等关键超参对收敛与泛化的作用，并给出观察与记录要点。</p>
 <h3 id="%E4%BB%8E%E8%BF%81%E7%A7%BB%E5%AD%A6%E4%B9%A0%E4%B8%8E%E5%88%86%E5%B8%83%E5%81%8F%E7%A7%BB%E8%B0%88%E8%B5%B7">从迁移学习与分布偏移谈起<a class="anchor-link" href="#%E4%BB%8E%E8%BF%81%E7%A7%BB%E5%AD%A6%E4%B9%A0%E4%B8%8E%E5%88%86%E5%B8%83%E5%81%8F%E7%A7%BB%E8%B0%88%E8%B5%B7">¶</a></h3><ul>
 <li><strong>迁移学习的本质</strong>：先在大规模通用数据上预训练，再把已有能力“迁移”到目标任务/领域上。</li>
 <li><strong>分布偏移的三类</strong>：<ul>
@@ -8055,7 +8060,7 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A2-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E5%AF%B9%E6%AF%94%EF%BC%9AFPFT%E3%80%81LoRA%E3%80%81AdaLoRA%E3%80%81QLoRA">A2 微调范式对比：FPFT、LoRA、AdaLoRA、QLoRA<a class="anchor-link" href="#A2-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E5%AF%B9%E6%AF%94%EF%BC%9AFPFT%E3%80%81LoRA%E3%80%81AdaLoRA%E3%80%81QLoRA">¶</a></h2><p>建立“任务规模×算力×时限×维护成本”的选型框架：FPFT具备充分表达但资源开销较大；LoRA以低秩分解提升参数效率；AdaLoRA在秩自适应下改善表达与稳定性；QLoRA以量化降低显存占用但需关注量化误差。基于统一数据与评测口径，形成各范式在显存、吞吐与效果上的可比结论，用于实际决策。</p>
+<h2 id="A3-%E8%AE%AD%E7%BB%83%E6%98%BE%E5%AD%98%E8%AE%A1%E7%AE%97">A3 训练显存计算<a class="anchor-link" href="#A3-%E8%AE%AD%E7%BB%83%E6%98%BE%E5%AD%98%E8%AE%A1%E7%AE%97">¶</a></h2>
 </div>
 </div>
 </div>
@@ -8072,10 +8077,10 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </p>
 图 1：比较模型状态的每设备内存消耗，并采用三个阶段的 ZeRO-DP 优化。
 Ψ表示模型大小（参数数），K表示优化器状态的内存乘数，Nd表示DP度。
-在本例中，我们假设模型大小为 Ψ = 7.5B，DP 为 Nd = 64，K = 12，基于 Adam 优化器的混合精度训练。
+在本例中，假设模型大小为 Ψ = 7.5B，DP 为 Nd = 64，K = 12，基于 Adam 优化器的混合精度训练。
 
 <p>例如，一个拥有1.5B参数的GPT-2模型，在16位精度（FP16）下其参数（或权重）需要3GB的内存，但使用TensorFlow或PyTorch在单个GPU（显存为32GB）上训练时却无法实现。人们不禁会好奇，所有这些内存都去了哪里？
-在模型训练过程中，大部分内存被<strong>模型状态</strong>占用，即包含优化器状态、梯度和参数的张量。除这些模型状态外，其余的内存主要由激活值、临时缓冲区和碎片化的内存组成，我们统称为<strong>残余状态</strong>。以下我们会详细探讨这些内存消耗的具体情况。</p>
+在模型训练过程中，大部分内存被<strong>模型状态</strong>占用，即包含优化器状态、梯度和参数的张量。除这些模型状态外，其余的内存主要由激活值、临时缓冲区和碎片化的内存组成，统称为<strong>残余状态</strong>。以下将会详细探讨这些内存消耗的具体情况。</p>
 <h4 id="A.-%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E3%80%81%E6%A2%AF%E5%BA%A6%E5%92%8C%E5%8F%82%E6%95%B0">A. 模型状态：优化器状态、梯度和参数<a class="anchor-link" href="#A.-%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E3%80%81%E6%A2%AF%E5%BA%A6%E5%92%8C%E5%8F%82%E6%95%B0">¶</a></h4><p>在训练过程中，设备的绝大部分内存都被模型状态占用。例如，Adam优化器[6]是深度学习中最常用的优化器之一。Adam需要存储两个优化器状态：</p>
 <ul>
 <li>动量（Momentum）——对梯度的时间平均；</li>
@@ -8087,7 +8092,10 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <p>以Adam优化器为例，训练拥有Ψ个参数的模型时，需要<strong>同时存储</strong>：</p>
 <ul>
 <li>参数的FP16副本和梯度（每个占用2Ψ字节）；</li>
-<li>参数的FP32副本、动量和方差（每个占用4Ψ字节）。</li>
+<li>参数的FP32副本、动量和方差（每个占用4Ψ字节）。<ul>
+<li>【注】当参数为FP16时，往往需要在优化器中再存一个梯度副本用于避免数值下溢为0（FP16主要用于减少激活值显存）；但<strong>BF16</strong>往往不用。具体情况具体分析</li>
+</ul>
+</li>
 </ul>
 <p>定义“优化器状态所需的额外内存倍数”为K，即存储这些状态额外所需的内存与Ψ的乘积。例如，混合精度Adam的K值为12。
 因此，总的内存消耗为：</p>
@@ -8101,16 +8109,16 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <p>此外，用于存储中间结果的<strong>临时缓冲区</strong>也会消耗不少内存。在某些操作中，例如梯度全规约（All-Reduce）或梯度范数计算，为了提升吞吐量，所有梯度通常会被“融合”到一个扁平缓冲区中进行操作。比如，跨设备的All-Reduce操作在大消息传输中效率更高。
 这些缓冲区通常是FP32的张量（即更高精度），虽然梯度本身多为FP16，但融合缓冲区的大小依操作而定。当模型参数很大时，这些临时缓冲区的大小是不可忽视的。以15亿参数的模型为例，扁平化的FP32缓冲区大约需要6GB。</p>
 <p><strong>内存碎片化</strong>
-至此，我们讨论了训练中实际的内存消耗。但是即使系统中有很多剩余内存，也可能由于碎片化导致“可用内存不足”而无法成功分配所需空间。
+以上讨论了训练中实际的内存消耗。但是即使系统中有很多剩余内存，也可能由于碎片化导致“可用内存不足”而无法成功分配所需空间。
 这是因为内存的碎片化现象：请求的连续内存块不足，而实际上总剩余内存远大于请求值。特别是在训练极大模型时，碎片化问题尤为严重，甚至在仍有30%以上总内存未被使用的情况下也会出现“内存溢出”问题。</p>
 <h3 id="2-DeepSeed-ZeRO">2 DeepSeed-ZeRO<a class="anchor-link" href="#2-DeepSeed-ZeRO">¶</a></h3><p>简要介绍当前广泛使用的分布式训练范式，由微软提出的DeepSpeed-ZeRO-DP。</p>
 <p>虽然现有的DP方法在每台设备上复制模型状态，并带来显著的内存开销，ZeRO-DP通过将优化器状态、梯度和参数划分到各个数据并行进程中，消除了这种内存冗余。图1量化并可视化了有无ZeRO-DP情况下的内存需求。该图显示了在每个优化阶段（Pos、Pg 和 Pp）后，经过划分后内存占用的变化情况，即优化的三个阶段。</p>
-<h4 id="A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">A. Pos：优化器状态划分  （ZeRO-1: Pos）<a class="anchor-link" href="#A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">¶</a></h4><p>对于数据并行度为 Nd 的情况，我们将优化器状态平均划分为 Nd 个部分，使第 i 个数据并行进程只更新对应第 i 个划分的优化器状态。
+<h4 id="A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">A. Pos：优化器状态划分  （ZeRO-1: Pos）<a class="anchor-link" href="#A.-Pos%EF%BC%9A%E4%BC%98%E5%8C%96%E5%99%A8%E7%8A%B6%E6%80%81%E5%88%92%E5%88%86--%EF%BC%88ZeRO-1:-Pos%EF%BC%89">¶</a></h4><p>对于数据并行度为 Nd 的情况，将优化器状态平均划分为 Nd 个部分，使第 i 个数据并行进程只更新对应第 i 个划分的优化器状态。
 因此，每个数据并行进程仅需存储和更新总优化器状态的 1/Nd ，以及参数的 1/Nd。
-为确保所有参数都已更新，我们在每个训练步骤结束后，进行一次全体收集（all-gather）操作，以获得所有数据并行进程中更新的完整参数。<br/>
+为确保所有参数都已更新，在每个训练步骤结束后，进行一次全体收集（all-gather）操作，以获得所有数据并行进程中更新的完整参数。<br/>
 内存节省：如图1所示，经过状态划分后，内存消耗从 4Ψ + KΨ 减少到 4Ψ + (KΨ)/Nd。以图中示例为例，一个参数为75亿的模型在64路DP（Nd=64）下使用Pos优化后，需要31.4GB内存，而标准DP则需要120GB。此外，当Nd值较大时，模型状态的内存需求从 16Ψ（即4Ψ + 12Ψ）减少到约4Ψ，减少了约4倍。</p>
 <h4 id="B.-Pg%EF%BC%9A%E6%A2%AF%E5%BA%A6%E5%88%92%E5%88%86--%EF%BC%88ZeRO-2:-Pos+g%EF%BC%89">B. Pg：梯度划分  （ZeRO-2: Pos+g）<a class="anchor-link" href="#B.-Pg%EF%BC%9A%E6%A2%AF%E5%BA%A6%E5%88%92%E5%88%86--%EF%BC%88ZeRO-2:-Pos+g%EF%BC%89">¶</a></h4><p>每个数据并行进程只更新对应参数部分的梯度，因此它只需要对应参数的缩减梯度。在反向传播过程中，梯度会在对应的进程上被归约（reduce），随后不再需要这些梯度，相关内存可以释放。这将原本占用 2Ψ 内存的梯度空间，缩减到 2Ψ/Nd。<br/>
-这基本上是一个Reduce-Scatter操作，不同参数对应的梯度被分散到不同的进程进行减少。为了提高效率，我们采用分桶策略：将所有对应同一分区的梯度归入一个桶，并对整个桶进行减少操作。这类似于NVIDIA AMP优化中的梯度桶化，旨在Overlap通信和计算。在本方法中，我们在分区边界执行reduce操作，以减少内存占用并实现通信与计算的重叠。<br/>
+这基本上是一个Reduce-Scatter操作，不同参数对应的梯度被分散到不同的进程进行减少。为了提高效率，采用分桶策略：将所有对应同一分区的梯度归入一个桶，并对整个桶进行减少操作。这类似于NVIDIA AMP优化中的梯度桶化，旨在Overlap通信和计算。在本方法中，在分区边界执行reduce操作，以减少内存占用并实现通信与计算的重叠。<br/>
 内存节省：通过去除梯度和优化器状态的冗余，内存需求进一步降低到 2Ψ + (14Ψ)/Nd。以图中的例子为例，使用Pos+g在64路DP下，参数为75亿的模型只需约16.6GB内存，而标准DP则需要120GB。当Nd较大时，模型状态的内存从 16Ψ 下降到约2Ψ。</p>
 <h4 id="C.-Pp%EF%BC%9A%E5%8F%82%E6%95%B0%E5%88%92%E5%88%86--%EF%BC%88ZeRO-3:-Pos+g+p%EF%BC%89">C. Pp：参数划分  （ZeRO-3: Pos+g+p）<a class="anchor-link" href="#C.-Pp%EF%BC%9A%E5%8F%82%E6%95%B0%E5%88%92%E5%88%86--%EF%BC%88ZeRO-3:-Pos+g+p%EF%BC%89">¶</a></h4><p>参数的处理方式与优化器状态和梯度相似。每个进程只存储所属分区的参数，当需要其他分区的参数进行前向或反向传播时，相关参数通过广播（broadcast）从对应的进程获取。虽然这似乎会带来较大通信开销，但实际上仅会使总通信量变为基线DP的1.5倍，同时实现的内存节省与模型复制（MP）相当，但通信开销只有其一部分，具体在第七章C节详细讨论。<br/>
 内存节省：采用参数划分后，模型参数为 Ψ 时的存储需求从 16Ψ 降到 16Ψ/Nd。以示例模型为例，在64路DP下使用Pos+p+g，只需约1.9GB模型状态内存，而非标准DP下的120GB。这意味着，ZeRO显著扩展了DP的能力——只要有足够多的设备共享模型状态，就能训练规模更大的模型。</p>
@@ -8119,8 +8127,19 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <img alt="No description has been provided for this image" src="./image/11.png" width="400"/>
 </p>
 <p>如图为ZeRO-DP三阶段都启用的伪代码。先给每个进程都分配一部分层，前向传播时逐层<em>收集模型切片</em>然后计算然后<em>释放模型切片</em>，反向传播时逐层<em>收集模型切片</em>然后计算然后规约，然后<em>释放模型切片+梯度切片</em>。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bdee3ec7">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="A4-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%B8%8E%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B">A4 微调范式与框架选型<a class="anchor-link" href="#A4-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%B8%8E%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B">¶</a></h2><!-- 建立“任务规模×算力×时限×维护成本”的选型框架：FPFT具备充分表达但资源开销较大；LoRA以低秩分解提升参数效率；AdaLoRA在秩自适应下改善表达与稳定性；QLoRA以量化降低显存占用但需关注量化误差。基于统一数据与评测口径，形成各范式在显存、吞吐与效果上的可比结论，用于实际决策。 -->
 <!-- https://zhuanlan.zhihu.com/p/1903385294344021244 -->
-<h3 id="2-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">2 FPFT、LoRA、QLoRA 微调范式选型思路<a class="anchor-link" href="#2-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">¶</a></h3><p>围绕三种主流范式，给出原理、显存估算、示例与适用场景，最后给出简明选型准则。</p>
+<h3 id="1-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">1 FPFT、LoRA、QLoRA 微调范式选型思路<a class="anchor-link" href="#1-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">¶</a></h3><p>围绕三种主流范式，给出原理、显存估算、示例与适用场景，最后给出简明选型准则。</p>
 <h4 id="%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">一、全参数微调（FPFT）<a class="anchor-link" href="#%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">¶</a></h4><ul>
 <li><strong>原理（做什么）</strong><ul>
 <li>更新模型全部权重，能够系统性重塑表示与推理过程；常配合混合精度与分布式（ZeRO-2/3）、激活检查点。</li>
@@ -8239,97 +8258,9 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </ul>
 </li>
 </ul>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=830b3f48">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A3%E6%A0%87%E5%87%86%E5%BE%AE%E8%B0%83%E6%B5%81%E7%A8%8B%EF%BC%9A%EF%BC%88%E6%95%B0%E6%8D%AE%E2%86%92%E8%AE%AD%E7%BB%83%E2%86%92%E8%AF%84%E4%BC%B0%E2%86%92%E5%BD%92%E6%A1%A3%E2%86%92%E4%B8%8A%E7%BA%BF%EF%BC%89">A3标准微调流程：（数据→训练→评估→归档→上线）<a class="anchor-link" href="#A3%E6%A0%87%E5%87%86%E5%BE%AE%E8%B0%83%E6%B5%81%E7%A8%8B%EF%BC%9A%EF%BC%88%E6%95%B0%E6%8D%AE%E2%86%92%E8%AE%AD%E7%BB%83%E2%86%92%E8%AF%84%E4%BC%B0%E2%86%92%E5%BD%92%E6%A1%A3%E2%86%92%E4%B8%8A%E7%BA%BF%EF%BC%89">¶</a></h2><p>规范数据治理（清洗、去重、格式统一、审计留痕）、训练配置与日志记录、评估集构造与复现实验的要点；明确版本化管理、随机种子与环境固定等可复现要求，建立从实验到上线的最小闭环与风险控制清单。</p>
-<h3 id="1-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E5%AF%B9%E6%AF%94">1 微调范式对比<a class="anchor-link" href="#1-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E5%AF%B9%E6%AF%94">¶</a></h3>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3728d256">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>命令行执行：</p>
-<div class="highlight"><pre><span></span><span class="c1"># conda环境</span>
-conda<span class="w"> </span>create<span class="w"> </span>-p<span class="w"> </span>./env<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
-conda<span class="w"> </span>activate<span class="w"> </span>./env
-
-<span class="c1"># ms-swift训练环境</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/modelscope/ms-swift.git
-<span class="nb">cd</span><span class="w"> </span>ms-swift
-pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-<span class="nb">cd</span><span class="w"> </span>..
-
-<span class="c1"># 下载模型文件</span>
-apt-gpt<span class="w"> </span>update
-apt-get<span class="w"> </span>install<span class="w"> </span>git-lfs
-git<span class="w"> </span>lfs<span class="w"> </span>install
-mkdir<span class="w"> </span>models<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>models
-
-<span class="nv">GIT_LFS_SKIP_SMUDGE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://hf-mirror.com/Qwen/Qwen2.5-VL-3B-Instruct
-<span class="nb">cd</span><span class="w"> </span>Qwen2.5-VL-3B-Instruct/
-git<span class="w"> </span>lfs<span class="w"> </span>pull
-<span class="nb">cd</span><span class="w"> </span>..
-
-<span class="nv">GIT_LFS_SKIP_SMUDGE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://hf-mirror.com/Qwen/Qwen2.5-VL-7B-Instruct
-<span class="nb">cd</span><span class="w"> </span>Qwen2.5-VL-7B-Instruct/
-git<span class="w"> </span>lfs<span class="w"> </span>pull
-<span class="nb">cd</span><span class="w"> </span>..
-</pre></div>
-<p>然后执行脚本</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=00f2f3fb">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<pre><code>mkdir data &amp;&amp; cd data
-git lfs install
-pip install torchvision
-
-pip install qwen-vl-utils[decord]
-git clone https://www.modelscope.cn/datasets/swift/self-cognition.git
-
-</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e5d58db1">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="2-%E6%A0%87%E5%87%86%E5%BE%AE%E8%B0%83%E6%B5%81%E7%A8%8B">2 标准微调流程<a class="anchor-link" href="#2-%E6%A0%87%E5%87%86%E5%BE%AE%E8%B0%83%E6%B5%81%E7%A8%8B">¶</a></h3>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2bd7c54c">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A4%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E4%B8%8E%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87%EF%BC%9Aunsloth-/-ms-swift-/-llama-factory">A4框架选型与环境准备：unsloth / ms-swift / llama-factory<a class="anchor-link" href="#A4%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E4%B8%8E%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87%EF%BC%9Aunsloth-/-ms-swift-/-llama-factory">¶</a></h2><p>讲解两框架在 SFT/PEFT/对齐中的接口与流水线差异，结合显存与吞吐的经验阈值给出适配建议；完成环境验证与基线运行，记录资源占用、收敛速度与稳定性，为下午的案例训练提供可靠起点。</p>
-<h3 id="LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">LLaMA-Factory / Unsloth / ms-SWIFT 对比表<a class="anchor-link" href="#LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">¶</a></h3><table>
+<h3 id="2-%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B">2 框架选型<a class="anchor-link" href="#2-%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B">¶</a></h3> <!-- 框架选型与环境准备：unsloth / ms-swift / llama-factory -->
+<!-- 讲解两框架在 SFT/PEFT/对齐中的接口与流水线差异，结合显存与吞吐的经验阈值给出适配建议；完成环境验证与基线运行，记录资源占用、收敛速度与稳定性，为下午的案例训练提供可靠起点。 -->
+<h4 id="1-LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">1 LLaMA-Factory / Unsloth / ms-SWIFT 对比表<a class="anchor-link" href="#1-LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">¶</a></h4><table>
 <thead>
 <tr>
 <th>维度</th>
@@ -8393,6 +8324,41 @@ git clone https://www.modelscope.cn/datasets/swift/self-cognition.git
 <li>核心结论：Unsloth 速度与显存效率最佳；LLaMA-Factory 最全面与灵活；ms-SWIFT 依托 ModelScope，适合生态内的 PEFT/定制场景</li>
 <li>不过，目前LLaMA-Factory还不支持GRPO；unsloth主要仅限于单卡场景</li>
 </ul>
+<h4 id="2-%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83">2 配置环境<a class="anchor-link" href="#2-%E9%85%8D%E7%BD%AE%E7%8E%AF%E5%A2%83">¶</a></h4><p>命令行执行：</p>
+<div class="highlight"><pre><span></span><span class="c1"># conda环境</span>
+conda<span class="w"> </span>create<span class="w"> </span>-p<span class="w"> </span>./env<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
+conda<span class="w"> </span>activate<span class="w"> </span>./env
+
+<span class="c1"># ms-swift训练环境</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/modelscope/ms-swift.git
+<span class="nb">cd</span><span class="w"> </span>ms-swift
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+<span class="nb">cd</span><span class="w"> </span>..
+
+<span class="c1"># 下载模型文件</span>
+apt-gpt<span class="w"> </span>update
+apt-get<span class="w"> </span>install<span class="w"> </span>git-lfs
+git<span class="w"> </span>lfs<span class="w"> </span>install
+mkdir<span class="w"> </span>models<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>models
+
+
+<span class="nv">GIT_LFS_SKIP_SMUDGE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://hf-mirror.com/Qwen/Qwen2.5-VL-7B-Instruct
+<span class="nb">cd</span><span class="w"> </span>Qwen2.5-VL-7B-Instruct/
+git<span class="w"> </span>lfs<span class="w"> </span>pull
+<span class="nb">cd</span><span class="w"> </span>..
+
+<span class="nv">GIT_LFS_SKIP_SMUDGE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://hf-mirror.com/Qwen/Qwen2.5-7B-Instruct
+<span class="nb">cd</span><span class="w"> </span>Qwen2.5-7B-Instruct/
+git<span class="w"> </span>lfs<span class="w"> </span>pull
+<span class="nb">cd</span><span class="w"> </span>..
+
+mkdir<span class="w"> </span>data<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>data
+git<span class="w"> </span>lfs<span class="w"> </span>install
+pip<span class="w"> </span>install<span class="w"> </span>torchvision
+
+pip<span class="w"> </span>install<span class="w"> </span>qwen-vl-utils<span class="o">[</span>decord<span class="o">]</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://www.modelscope.cn/datasets/swift/self-cognition.git
+</pre></div>
 </div>
 </div>
 </div>
@@ -8404,6 +8370,356 @@ git clone https://www.modelscope.cn/datasets/swift/self-cognition.git
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="A5-LoRA-/-QLoRA-%E6%A1%88%E4%BE%8B%EF%BC%88%E6%8C%87%E4%BB%A4%E9%81%B5%E5%BE%AA%E5%B0%8F%E6%A8%A1%E5%9E%8B%EF%BC%89">A5 LoRA / QLoRA 案例（指令遵循小模型）<a class="anchor-link" href="#A5-LoRA-/-QLoRA-%E6%A1%88%E4%BE%8B%EF%BC%88%E6%8C%87%E4%BB%A4%E9%81%B5%E5%BE%AA%E5%B0%8F%E6%A8%A1%E5%9E%8B%EF%BC%89">¶</a></h2><p>在单卡（≤24GB）条件下完成一次基于 LoRA 或 QLoRA 的指令微调演示；比较不同秩、α、dropout、量化位宽、学习率、批大小对收敛与输出质量的影响；开展推理验证并记录延迟与效果的关键观察点，沉淀参数选择的经验规则。</p>
+<h3 id="1-%E4%B8%80%E8%88%AC%E6%80%A7%E7%BB%93%E8%AE%BA">1 一般性结论<a class="anchor-link" href="#1-%E4%B8%80%E8%88%AC%E6%80%A7%E7%BB%93%E8%AE%BA">¶</a></h3><p>以下结论适用于 LoRA 与 QLoRA（Q 表示底座权重被量化，通常 8/4-bit）。Q 会引入量化噪声，使得训练更“脆弱”，因此在相同设置下往往需要更保守的学习率、更小的有效更新尺度或更大的 rank 来弥补容量。</p>
+<ul>
+<li>有效更新尺度近似由三者共同决定：学习率 × 适配器步幅比例 × LoRA 缩放，其中 LoRA 缩放约为 ( \alpha / r )。因此 r、alpha、学习率强耦合，调一个要联动另两个。</li>
+</ul>
+<h4 id="%E5%90%84%E8%B6%85%E5%8F%82%E5%BD%B1%E5%93%8D%E4%B8%8E%E5%BB%BA%E8%AE%AE">各超参影响与建议<a class="anchor-link" href="#%E5%90%84%E8%B6%85%E5%8F%82%E5%BD%B1%E5%93%8D%E4%B8%8E%E5%BB%BA%E8%AE%AE">¶</a></h4><ul>
+<li><p><strong>rank（r）容量/表达力</strong></p>
+<ul>
+<li>影响：r↑ → 适配器容量↑，可拟合复杂分布、提升上限；但过大更易过拟合、显存与算力开销↑、收敛更慢。</li>
+<li>LoRA：r=4–16 常够用；大任务/多域可用 32–64。</li>
+<li>QLoRA：量化引入噪声，常用 r 比 LoRA 略大一档以抵消噪声（如 16–64）。</li>
+<li>观察：验证集指标是否随 r 提升而仍有收益；若收益趋平或过拟合增大，r 已过大。</li>
+</ul>
+</li>
+<li><p><strong>alpha（缩放系数）与有效步幅</strong></p>
+<ul>
+<li>影响：控制注入主干的更新幅度；有效缩放约为 ( \alpha / r )。在相同学习率下，alpha↑ → 有效更新↑，收敛更快但更易震荡。</li>
+<li>经验：保持 ( \alpha / r \in [1, 8] ) 较稳健。常见组合：<ul>
+<li>r=8, alpha=16/32（( \alpha/r=2/4 )）</li>
+<li>r=16, alpha=16/32（( \alpha/r=1/2 )）</li>
+</ul>
+</li>
+<li>QLoRA：倾向更保守（或适当增大 r 而不过度增大 ( \alpha/r )）。</li>
+</ul>
+</li>
+<li><p><strong>dropout（LoRA 适配器上的丢弃）</strong></p>
+<ul>
+<li>影响：正则化、防过拟合；过大则抑制有效容量、降低上限并放慢收敛。</li>
+<li>经验：0–0.1 常用；小数据/窄域建议 0.05–0.1，数据大或强正则不需要时设 0。</li>
+<li>QLoRA：量化已带噪，通常不需要太大 dropout（0–0.05）。</li>
+</ul>
+</li>
+<li><p><strong>量化位宽（QLoRA 特有）</strong></p>
+<ul>
+<li>影响：位宽↓ → 记忆/带宽省、速度↑，但量化误差↑，训练更脆弱，可能降低收敛速度与最终质量。</li>
+<li>建议：4-bit（NF4）为 QLoRA 主流，质量接近 8-bit 且显存大幅下降；8-bit 更稳但省存效果差；≤3-bit 质量显著下降，不推荐。</li>
+<li>配置联动：位宽↓ → 适当减小学习率或 ( \alpha/r )，或增大 r；训练更需要梯度裁剪与稳定的优化器设置。</li>
+</ul>
+</li>
+<li><p><strong>学习率（lr）</strong></p>
+<ul>
+<li>影响：lr↑ → 早期收敛更快但更易发散/欠拟合细节；lr↓ → 稳定但慢、可能陷入欠学习。</li>
+<li>经验范围（指适配器参数的 lr；使用 AdamW/Adam8bit/Adafactor 等）：<ul>
+<li>指令微调：1e-4–3e-4 常见；小数据或高噪声（QLoRA/低位宽）用 5e-5–2e-4。</li>
+<li>生成质量优先且数据干净：1e-4 左右更稳。</li>
+</ul>
+</li>
+<li>联动：若 ( \alpha/r ) 较大，应相应降低 lr；若 r 较大且 ( \alpha/r ) 保守，可维持或略升 lr。</li>
+</ul>
+</li>
+<li><p><strong>批大小（batch size / 有效 batch，包括梯度累计）</strong></p>
+<ul>
+<li>影响：batch↑ → 梯度方差↓，收敛更平滑；但过大可能泛化变差。小 batch 训练噪声大，需要更小 lr 或更长训练。</li>
+<li>经验：遵循线性缩放规律可作为起点：总有效 batch×lr 近似保持不变（再用 warmup/余弦退火微调）。</li>
+<li>QLoRA：为稳健可优先增大有效 batch（通过梯度累计）而非单步 lr。</li>
+<li>实操：关注“每步处理的 token 数”作为更稳定的缩放度量。</li>
+</ul>
+</li>
+</ul>
+<h4 id="%E5%B8%B8%E7%94%A8%E6%96%B9%E6%A1%88">常用方案<a class="anchor-link" href="#%E5%B8%B8%E7%94%A8%E6%96%B9%E6%A1%88">¶</a></h4><ul>
+<li><p>LoRA（7B–13B，指令微调，中等数据量）</p>
+<ul>
+<li>r=8–16，alpha=16–32（( \alpha/r=1–4 )），dropout=0–0.05</li>
+<li>lr=1e-4–2e-4，warmup 1–3% 步数，梯度裁剪 0.5–1.0</li>
+<li>有效 batch 512–4096 序列-令牌（按显存与吞吐折中）</li>
+</ul>
+</li>
+<li><p>QLoRA（4-bit NF4，7B–13B）</p>
+<ul>
+<li>r=16–64（比 LoRA 略大），alpha 选择使 ( \alpha/r=1–2 )</li>
+<li>dropout=0–0.05</li>
+<li>lr=5e-5–2e-4，优先用较大有效 batch 平滑训练</li>
+<li>需要：稳定量化实现、梯度裁剪、较小 weight decay（如 0–0.05）</li>
+</ul>
+</li>
+</ul>
+<h4 id="%E4%BA%A4%E4%BA%92%E4%B8%8E%E5%8F%96%E8%88%8D%E8%A6%81%E7%82%B9">交互与取舍要点<a class="anchor-link" href="#%E4%BA%A4%E4%BA%92%E4%B8%8E%E5%8F%96%E8%88%8D%E8%A6%81%E7%82%B9">¶</a></h4><ul>
+<li>调 r 与 alpha 时盯紧 ( \alpha/r ) 与 lr 的乘积；这三者共同决定“有效更新强度”。</li>
+<li>量化位宽越低，越倾向：r↑、lr↓、dropout 保守、batch↑。</li>
+<li>小数据/分布窄：更小 r 与更强正则（或早停）；大数据/多域：更大 r 与更长训练。</li>
+<li>先保证稳定（不发散、不震荡），再逐步增加有效更新强度以提升上限。</li>
+</ul>
+<h4 id="%E8%A7%82%E5%AF%9F%E5%93%AA%E4%BA%9B%E6%8C%87%E6%A0%87%E6%9D%A5%E5%81%9A%E5%86%B3%E7%AD%96">观察哪些指标来做决策<a class="anchor-link" href="#%E8%A7%82%E5%AF%9F%E5%93%AA%E4%BA%9B%E6%8C%87%E6%A0%87%E6%9D%A5%E5%81%9A%E5%86%B3%E7%AD%96">¶</a></h4><ul>
+<li>训练/验证损失是否平稳下降、是否出现长时间震荡或发散。</li>
+<li>生成质量（人工/自动评测）、长度控制、重复/幻觉率。</li>
+<li>梯度范数与更新范数是否频繁尖峰（过大 lr 或 ( \alpha/r )）。</li>
+<li>不同 r 的边际收益是否已饱和。</li>
+</ul>
+<h3 id="2-%E5%AE%9E%E9%AA%8C">2 实验<a class="anchor-link" href="#2-%E5%AE%9E%E9%AA%8C">¶</a></h3><h4 id="2.1-OCR%E6%96%87%E5%AD%97%E8%AF%86%E5%88%AB%EF%BC%88%E5%A4%9A%E6%A8%A1%E6%80%81sft%EF%BC%89-lora">2.1 OCR文字识别（多模态sft）-lora<a class="anchor-link" href="#2.1-OCR%E6%96%87%E5%AD%97%E8%AF%86%E5%88%AB%EF%BC%88%E5%A4%9A%E6%A8%A1%E6%80%81sft%EF%BC%89-lora">¶</a></h4><pre><code># 20GB lora
+CUDA_VISIBLE_DEVICES=1 \
+MAX_PIXELS=1003520 \
+swift sft \
+    --model models/Qwen2.5-VL-7B-Instruct \
+    --dataset 'data/LaTeX_OCR:human_handwrite' \
+    --split_dataset_ratio 0.01 \
+    --train_type lora \
+    --torch_dtype bfloat16 \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --learning_rate 1e-4 \
+    --lora_rank 8 \
+    --lora_alpha 32 \
+    --target_modules all-linear \
+    --freeze_vit true \
+    --gradient_accumulation_steps 16 \
+    --eval_steps 1 \
+    --save_steps 50 \
+    --save_total_limit 2 \
+    --logging_steps 5 \
+    --max_length 4096 \
+    --output_dir output \
+    --warmup_ratio 0.05 \
+    --dataloader_num_workers 4
+</code></pre>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/v32-20250915-104739/images/eval_token_acc.png" width="800"/>
+</p>
+<ul>
+<li><strong>总体收敛</strong>：<code>eval_loss</code> 从 0.828 → 0.0206，约下降 97.5%；<code>eval_token_acc</code> 从 0.8835 → 0.9899，提升约 +10.6 个百分点（token 误差率由 11.6% 降至 1.0%，相对误差下降约 91%）。</li>
+<li><strong>最佳点与回升</strong>：最优 <code>eval_loss</code> 出现在 step 30（约 36% 进度）为 0.01388，随后缓慢回升并在 0.020–0.031 之间波动，最终值较最优高约 48%（轻微过拟合/平台期信号）。</li>
+<li><strong>训练态势</strong>：最终 <code>train_loss</code>=0.0816，训练稳定、显存约 18 GiB、速度 ~0.113 it/s；<code>grad_norm</code> 全程较小（&lt;1），无明显梯度不稳。</li>
+<li><strong>学习率调度</strong>：预热后升至 1e-4（step 5），随后余弦/线性衰减至 3.6e-7；最优点出现在 LR 仍较高但已开始下降的早中期，之后收益趋于饱和。</li>
+<li><strong>指标平台</strong>：自 step 30 起 <code>eval_token_acc</code> 基本稳定在 ~0.99，继续训练收益极小，表明已达任务可达上限或验证集可分性较高。</li>
+</ul>
+<h4 id="2.2-OCR%E6%96%87%E5%AD%97%E8%AF%86%E5%88%AB%EF%BC%88%E5%A4%9A%E6%A8%A1%E6%80%81sft%EF%BC%89-qlora">2.2 OCR文字识别（多模态sft）-qlora<a class="anchor-link" href="#2.2-OCR%E6%96%87%E5%AD%97%E8%AF%86%E5%88%AB%EF%BC%88%E5%A4%9A%E6%A8%A1%E6%80%81sft%EF%BC%89-qlora">¶</a></h4><pre><code>pip install bitsandbytes
+
+# qlora 8.15G
+CUDA_VISIBLE_DEVICES=1 \
+MAX_PIXELS=1003520 \
+swift sft \
+    --model models/Qwen2.5-VL-7B-Instruct \
+    --dataset 'data/LaTeX_OCR:human_handwrite' \
+    --split_dataset_ratio 0.01 \
+    --train_type lora \
+    --quant_bits 4 \
+    --quant_method bnb \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --learning_rate 1e-4 \
+    --lora_rank 16 \
+    --lora_alpha 32 \
+    --target_modules all-linear \
+    --freeze_vit true \
+    --gradient_accumulation_steps 16 \
+    --eval_steps 1 \
+    --save_steps 50 \
+    --save_total_limit 2 \
+    --logging_steps 5 \
+    --max_length 4096 \
+    --output_dir output \
+    --warmup_ratio 0.05 \
+    --dataloader_num_workers 4
+</code></pre>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/v38-20250915-114425/images/eval_token_acc.png" width="800"/>
+</p>
+<ul>
+<li><strong>总体收敛</strong>：<code>eval_loss</code> 从 0.8928 → 0.00890，约下降 99.0%；<code>eval_token_acc</code> 从 0.8608 → 0.9975，提升约 +13.7 个百分点（token 误差率由 13.9% 降至 0.25%，相对误差下降约 98.2%）。</li>
+<li><strong>最佳点与回升</strong>：最优 <code>eval_loss</code> 出现在 step 81（约 97.6% 进度）为 0.00848；之后在 0.0085–0.0117 之间小幅波动，最终值较最优高约 4.9%（基本为平台期，过拟合迹象不明显）。</li>
+<li><strong>训练态势</strong>：最终 <code>train_loss</code>=0.0903，训练稳定；显存约 8.15 GiB；速度 ~0.095 it/s（总时长 ~14m38s）。<code>grad_norm</code> 预热初期最高 ~2.88，随后稳定在 &lt;1 并逐步降至 ~0.12，无梯度震荡。</li>
+<li><strong>学习率调度</strong>：预热后在 step 5 升至 1e-4，随后持续衰减至 ~3.6e-7（step 80）；最优点出现在极低 LR 的后期，说明后期微小步长仍能带来细微泛化收益。</li>
+<li><strong>指标平台</strong>：自 ~step 33 起 <code>eval_token_acc</code> 基本稳定在 ~0.995–1.0；继续训练对 <code>eval_loss</code> 的改进极小，表明任务已接近可达上限或验证集可分性较高。</li>
+</ul>
+<h4 id="2.3-%E8%87%AA%E6%88%91%E8%AE%A4%E7%9F%A5%E5%BE%AE%E8%B0%83-lora">2.3 自我认知微调-lora<a class="anchor-link" href="#2.3-%E8%87%AA%E6%88%91%E8%AE%A4%E7%9F%A5%E5%BE%AE%E8%B0%83-lora">¶</a></h4><pre><code># 17.2GiB lora
+CUDA_VISIBLE_DEVICES=0 \
+swift sft \
+    --model ./models/Qwen2.5-VL-7B-Instruct \
+    --train_type lora \
+    --dataset './data/self-cognition#1000' \
+    --split_dataset_ratio 0.02 \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --learning_rate 1e-4 \
+    --lora_rank 8 \
+    --lora_alpha 32 \
+    --gradient_accumulation_steps 16 \
+    --eval_steps 1 \
+    --save_steps 100 \
+    --save_total_limit 2 \
+    --logging_steps 5 \
+    --model_author lwh \
+    --model_name lwh-robot
+
+</code></pre>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/Qwen2.5-VL-7B-Instruct/v11-20250915-111315/images/eval_token_acc.png" width="800"/>
+</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/Qwen2.5-VL-7B-Instruct/v11-20250915-111315/images/eval_loss.png" width="800"/>
+</p>
+<h5 id="%E8%AE%AD%E7%BB%83%E4%B8%8E%E8%AF%84%E6%B5%8B%E6%A6%82%E8%A7%88">训练与评测概览<a class="anchor-link" href="#%E8%AE%AD%E7%BB%83%E4%B8%8E%E8%AF%84%E6%B5%8B%E6%A6%82%E8%A7%88">¶</a></h5><ul>
+<li>模型与训练方式：Qwen2.5-VL-7B-Instruct，PEFT/LoRA（可训练参数约 20.19M，占比约 0.24%）</li>
+<li>训练配置与进度：1 epoch，63 steps，学习率从 ~1e-4 逐步衰减到 ~5.6e-7</li>
+<li>资源与速度：显存占用 ~16.7 GiB；训练速度 ~0.149 iter/s；总时长 ~7 分钟</li>
+</ul>
+<h5 id="%E6%8C%87%E6%A0%87%E8%B5%B0%E5%8A%BF%E4%B8%8E%E6%8B%90%E7%82%B9">指标走势与拐点<a class="anchor-link" href="#%E6%8C%87%E6%A0%87%E8%B5%B0%E5%8A%BF%E4%B8%8E%E6%8B%90%E7%82%B9">¶</a></h5><ul>
+<li>eval_loss：从 1.914 初始快速下降，至 step 36 降至最低 1.1857（最佳），之后缓慢回升，在最终 step（63）为 1.2597</li>
+<li>eval token_acc：从 0.580 上升至峰值约 0.7037（step 16–23 附近），随后轻微回落并在后半程徘徊于 0.642–0.691</li>
+<li>train_loss：持续下降（2.17 → 0.40 左右），与后半程 eval_loss 走弱形成背离，显示轻微过拟合</li>
+</ul>
+<h5 id="%E5%85%B3%E9%94%AE%E9%87%8C%E7%A8%8B%E7%A2%91%EF%BC%88%E6%91%98%E5%BD%95%EF%BC%89">关键里程碑（摘录）<a class="anchor-link" href="#%E5%85%B3%E9%94%AE%E9%87%8C%E7%A8%8B%E7%A2%91%EF%BC%88%E6%91%98%E5%BD%95%EF%BC%89">¶</a></h5><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>eval_loss</th>
+<th>token_acc</th>
+<th>train_loss</th>
+<th>lr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1.9140</td>
+<td>0.5803</td>
+<td>2.1731</td>
+<td>9.99e-05</td>
+</tr>
+<tr>
+<td>20</td>
+<td>1.2444</td>
+<td>0.7037</td>
+<td>0.7735</td>
+<td>7.71e-05</td>
+</tr>
+<tr>
+<td>36</td>
+<td>1.1857</td>
+<td>0.6914</td>
+<td>0.5684</td>
+<td>4.13e-05</td>
+</tr>
+<tr>
+<td>50</td>
+<td>1.2491</td>
+<td>0.6667</td>
+<td>0.3973</td>
+<td>1.01e-05</td>
+</tr>
+<tr>
+<td>63</td>
+<td>1.2597</td>
+<td>0.6420</td>
+<td>—</td>
+<td>~5.6e-07（至 step 60）</td>
+</tr>
+</tbody>
+</table>
+<h5 id="%E6%94%B6%E7%9B%8A%E9%87%8F%E5%8C%96">收益量化<a class="anchor-link" href="#%E6%94%B6%E7%9B%8A%E9%87%8F%E5%8C%96">¶</a></h5><ul>
+<li>最佳点（step 36）相对首评估改善：<ul>
+<li>eval_loss：下降约 38.1%（1.914 → 1.186）</li>
+<li>token_acc：+11.1–12.4 个百分点后回落至 ~0.691（区间峰值 ~0.704）</li>
+</ul>
+</li>
+<li>最终点（step 63）相对首评估仍有明显提升：<ul>
+<li>eval_loss：下降约 34.2%（1.914 → 1.260）</li>
+<li>token_acc：+6.2 个百分点（0.580 → ~0.642）</li>
+</ul>
+</li>
+</ul>
+<h5 id="%E8%AF%8A%E6%96%AD%E4%B8%8E%E7%BB%93%E8%AE%BA">诊断与结论<a class="anchor-link" href="#%E8%AF%8A%E6%96%AD%E4%B8%8E%E7%BB%93%E8%AE%BA">¶</a></h5><ul>
+<li>中后期出现轻微过拟合信号：train_loss 继续下降而 eval_loss 回升、token_acc 回落</li>
+<li>学习率长尾趋近于零后并未带来额外泛化收益；最佳泛化出现在中段 lr 仍较高时（step 36，lr≈4.13e-05）</li>
+<li>最优 checkpoint 出现在 step 36（best_metric=1.1857），但当前未启用 “best 模型回载”（best_model_checkpoint=null）</li>
+</ul>
+<h4 id="2.3-%E8%87%AA%E6%88%91%E8%AE%A4%E7%9F%A5%E5%BE%AE%E8%B0%83-qlora">2.3 自我认知微调-qlora<a class="anchor-link" href="#2.3-%E8%87%AA%E6%88%91%E8%AE%A4%E7%9F%A5%E5%BE%AE%E8%B0%83-qlora">¶</a></h4><pre><code># qlora 7.66G
+CUDA_VISIBLE_DEVICES=0 \
+swift sft \
+    --model ./models/Qwen2.5-VL-7B-Instruct \
+    --train_type lora \
+    --dataset './data/self-cognition#1000' \
+    --split_dataset_ratio 0.02 \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --learning_rate 1e-4 \
+    --lora_rank 8 \
+    --lora_alpha 32 \
+    --gradient_accumulation_steps 16 \
+    --eval_steps 1 \
+    --save_steps 100 \
+    --save_total_limit 2 \
+    --logging_steps 5 \
+    --model_author lwh \
+    --model_name lwh-robot \
+    --quant_bits 4 \
+    --quant_method bnb
+
+</code></pre>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/Qwen2.5-VL-7B-Instruct//v12-20250915-121041/images/eval_token_acc.png" width="800"/>
+</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/Qwen2.5-VL-7B-Instruct/v12-20250915-121041/images/eval_loss.png" width="800"/>
+</p>
+<h5 id="%E8%AF%84%E6%B5%8B%E6%8C%87%E6%A0%87%E4%B8%8E%E5%8F%98%E5%8C%96%E5%88%86%E6%9E%90">评测指标与变化分析<a class="anchor-link" href="#%E8%AF%84%E6%B5%8B%E6%8C%87%E6%A0%87%E4%B8%8E%E5%8F%98%E5%8C%96%E5%88%86%E6%9E%90">¶</a></h5><ul>
+<li><strong>整体收敛</strong>：单轮训练共 63 步，约 8m27s 完成。训练端持续下降（最终 <code>train_loss≈0.73</code>，后段单步 <code>loss≈0.41~0.57</code>；<code>train_token_acc≈0.86</code>），验证端在中前期快速改善，随后进入震荡平台期。</li>
+</ul>
+<h5 id="%E6%A0%B8%E5%BF%83%E6%8C%87%E6%A0%87%E8%BD%A8%E8%BF%B9">核心指标轨迹<a class="anchor-link" href="#%E6%A0%B8%E5%BF%83%E6%8C%87%E6%A0%87%E8%BD%A8%E8%BF%B9">¶</a></h5><ul>
+<li><strong>Eval loss</strong><ul>
+<li>初始：1.94（step 1）</li>
+<li>快速下降阶段：至约 1.25（step 20 附近）</li>
+<li>最优点：<strong>1.2217（step 27）</strong></li>
+<li>后续：维持在 1.24~1.30 小幅震荡，末尾 1.3023（step 63）</li>
+<li>解读：前半段收益显著，约 step 25~33 为拐点区；之后学习率已很低，指标无进一步提升，且略有回退，出现轻度过拟合迹象。</li>
+</ul>
+</li>
+<li><strong>Eval token_acc</strong><ul>
+<li>起点：0.543</li>
+<li>上升并平台：升至 0.67~0.70 区间后基本持平（多数在 0.679~0.704）</li>
+<li>解读：模型在当前数据/配置下的可达上限约 0.70，继续训练未带来显著增益。</li>
+</ul>
+</li>
+<li><strong>训练/验证差距</strong><ul>
+<li>训练端 <code>token_acc≈0.86</code> 明显高于验证端 ~0.70；训练端 loss 明显低于验证端</li>
+<li>解读：典型轻度过拟合，建议采用早停或更强正则化。</li>
+</ul>
+</li>
+<li><strong>学习率与稳定性</strong><ul>
+<li>学习率自 ~1e-4 逐步衰减至 ~5.6e-07（step 60），后段基本耗尽更新幅度</li>
+<li><code>grad_norm≈1.4~2.08</code>，稳定无爆炸；显存 ~7.66 GiB，迭代速率 ~0.124 it/s，运行稳定</li>
+</ul>
+</li>
+</ul>
+<h5 id="%E9%87%8C%E7%A8%8B%E7%A2%91%E4%B8%8E%E5%BB%BA%E8%AE%AE%E6%93%8D%E4%BD%9C">里程碑与建议操作<a class="anchor-link" href="#%E9%87%8C%E7%A8%8B%E7%A2%91%E4%B8%8E%E5%BB%BA%E8%AE%AE%E6%93%8D%E4%BD%9C">¶</a></h5><ul>
+<li><strong>最佳模型点</strong>：建议采用约 step 27（eval_loss=1.2217）附近的检查点作为最佳权重。<ul>
+<li>当前日志显示 <code>best_metric=1.2217</code>，但 <code>best_model_checkpoint=null</code>，说明未启用“最优模型保存”。下次训练建议：<ul>
+<li>开启 <code>--load_best_model_at_end</code></li>
+<li>设置 <code>--metric_for_best_model eval_loss</code>，<code>--greater_is_better False</code></li>
+<li>配合 <code>--save_total_limit</code> 限制磁盘占用</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>早停策略</strong>：在 eval 连续若干次（如 5 次）无改善后停止（patience=5），可节省 40%~50% 训练时间同时保持最优点性能。</li>
+<li><strong>正则与超参微调</strong><ul>
+<li>轻度过拟合：考虑 <code>weight_decay=0.01</code>、增加 <code>lora_dropout</code>（如 0.05→0.1）、启用 <code>label_smoothing</code>（如 0.05）</li>
+<li>学习率：当前 1e-4 有效，但可试 <code>5e-5</code> 或更长余弦尾部，提高后段稳健性</li>
+<li>批次/梯度：若显存允许，提高有效 batch 或使用更长 <code>grad_accum</code>，提升统计稳定性</li>
+</ul>
+</li>
+<li><strong>数据与评测</strong><ul>
+<li>若 token-level acc 已平台，进一步提升多来自数据：扩大/清洗/去重，提升指令多样性与难度</li>
+<li>增加更贴近任务的序列级指标（如 exact match、rouge/bleu、人评）补充 token_acc 的局限</li>
+</ul>
+</li>
+</ul>
+<h5 id="%E7%BB%93%E8%AE%BA">结论<a class="anchor-link" href="#%E7%BB%93%E8%AE%BA">¶</a></h5><ul>
+<li>训练有效收敛，验证性能在 step 25~33 达到平台并出现轻度过拟合；最佳点在 step 27（eval_loss≈1.2217，eval_token_acc≈0.667）。建议启用“最优模型保存”与早停，并通过轻量正则与小幅学习率/批次调整，提升后段稳健性；更大幅提升需要从数据与任务对齐的评测指标入手。</li>
+</ul>
 </div>
 </div>
 </div>
@@ -8719,7 +9035,7 @@ $$</p>
 <h4 id="4.1-DPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">4.1 DPO 的核心直觉<a class="anchor-link" href="#4.1-DPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">¶</a></h4><p>传统 RLHF 是一个“两步走”的过程：先用偏好数据（A 比 B 好）训练一个能给绝对分数（A 得 90 分，B 得 60 分）的奖励模型，然后再用这个分数去指导强化学习。</p>
 <p>DPO 的提出者反思道：我们最终的目标不就是让模型知道“A 比 B 好”吗？为什么非要先把它变成“A=90分，B=60分”，再回头去学习这个偏好呢？这个中间的奖励建模步骤不仅复杂，还可能引入误差。我们能不能直接建立一个从“偏好”到“策略更新”的数学桥梁？</p>
 <p>DPO 做到了这一点。它巧妙地将偏好数据和语言模型的策略联系起来，推导出了一个简单的、可以用分类损失函数直接优化的目标。</p>
-<h4 id="4.2-DPO-%E7%9A%84%E6%95%B0%E5%AD%A6%E9%AD%94%E6%B3%95%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">4.2 DPO 的数学魔法：从偏好到损失<a class="anchor-link" href="#4.2-DPO-%E7%9A%84%E6%95%B0%E5%AD%A6%E9%AD%94%E6%B3%95%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">¶</a></h4><p>DPO 的理论推导略显复杂，但其最终的损失函数却异常优雅。它始于一个名为 Bradley-Terry 的模型，该模型常用于根据成对比较来估计事物的排名。DPO 假设人类的偏好概率 $P(w &gt; l | x)$ 可以用一个潜在的奖励模型 $R$ 来建模：</p>
+<h4 id="4.2-DPO-%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">4.2 DPO ：从偏好到损失<a class="anchor-link" href="#4.2-DPO-%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">¶</a></h4><p>DPO 的理论推导略显复杂，但其最终的损失函数却异常优雅。它始于一个名为 Bradley-Terry 的模型，该模型常用于根据成对比较来估计事物的排名。DPO 假设人类的偏好概率 $P(w &gt; l | x)$ 可以用一个潜在的奖励模型 $R$ 来建模：</p>
 <p>$$
 P(w &gt; l | x) = \frac{\exp(R(w, x))}{\exp(R(w, x)) + \exp(R(l, x))}
 $$</p>
@@ -8728,7 +9044,7 @@ $$</p>
 <p>$$
 L(\pi) = -\sum_{(x, w, l) \in D} \log \sigma(\beta (\log \pi(w|x) - \log \pi(l|x)))
 $$</p>
-<p>让我们来解读这个“天书般”的公式：</p>
+<p>让我们来解读这个公式：</p>
 <ul>
 <li>$D$ 是我们的偏好数据集，包含了大量的 $(x, w, l)$ 三元组。</li>
 <li>$\pi$ 是我们正在训练的模型。</li>
@@ -9019,39 +9335,52 @@ $$</p>
 <p>对每个query生成一个中文版本的answer和一个英文版本的answer，
 用于在llama3 8b instruct上进行语言偏好的学习。</p>
 <p>发现非常有用，整个对齐过程只需要1h左右的训练，实测性能表现却超过了大部分通过中文对话SFT后的llama3中文版本</p>
-<pre><code>git lfs install
-git clone https://www.modelscope.cn/datasets/hjh0119/shareAI-Llama3-DPO-zh-en-emoji.git
+<div class="highlight"><pre><span></span><span class="c1"># 下载数据集</span>
+git<span class="w"> </span>lfs<span class="w"> </span>install
+git<span class="w"> </span>clone<span class="w"> </span>https://www.modelscope.cn/datasets/hjh0119/shareAI-Llama3-DPO-zh-en-emoji.git
 
-# 24GiB 1h
-# It is recommended to use padding_free. For more details, please refer to:
-# https://github.com/modelscope/ms-swift/blob/main/examples/train/padding_free/dpo.sh
-CUDA_VISIBLE_DEVICES=0 \
-swift rlhf \
-    --rlhf_type dpo \
-    --model ./models/Qwen2.5-VL-3B-Instruct \
-    --train_type lora \
-    --dataset ./data/shareAI-Llama3-DPO-zh-en-emoji/ \
-    --split_dataset_ratio 0.01 \
-    --torch_dtype bfloat16 \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
-    --learning_rate 1e-4 \
-    --lora_rank 8 \
-    --lora_alpha 32 \
-    --target_modules all-linear \
-    --gradient_accumulation_steps 16 \
-    --eval_steps 50 \
-    --save_steps 50 \
-    --save_total_limit 2 \
-    --logging_steps 5 \
-    --max_length 2048 \
-    --output_dir output \
-    --warmup_ratio 0.05 \
-    --dataloader_num_workers 4 \
-    --rpo_alpha 0.1 \
-    --dataset_num_proc 4
-</code></pre>
+<span class="c1"># 为了实际演示，使用脚本将该开元数据集转化为ms-swift标准输入输出</span>
+<span class="c1"># 形如：</span>
+<span class="c1"># {"messages": [{"role": "system", "content": "你是个有用无害的助手"}, {"role": "user", "content": "告诉我明天的天气"}, {"role": "assistant", "content": "明天天气晴朗"}], "rejected_response": "我不知道"}</span>
+<span class="c1"># {"messages": [{"role": "system", "content": "你是个有用无害的数学计算器"}, {"role": "user", "content": "1+1等于几"}, {"role": "assistant", "content": "等于2"}, {"role": "user", "content": "再加1呢"}, {"role": "assistant", "content": "等于3"}], "rejected_response": "我不知道"}</span>
+python3<span class="w"> </span>./scripts/convert_to_jsonl.py<span class="w"> </span><span class="se">\</span>
+-i<span class="w"> </span>./data/shareAI-Llama3-DPO-zh-en-emoji/merged_dpo_zh_emoji.jsonl<span class="w"> </span><span class="se">\</span>
+-o<span class="w"> </span>./data/shareAI-Llama3-DPO-zh-en-emoji/merged_dpo_zh_emoji.converted.jsonl<span class="w"> </span><span class="se">\</span>
+--user-field<span class="w"> </span>question<span class="w"> </span><span class="se">\</span>
+--chosen-field<span class="w"> </span>answer_zh<span class="w"> </span><span class="se">\</span>
+--reject-field<span class="w"> </span>answer_en
+
+<span class="c1"># 执行训练</span>
+<span class="c1"># 24GiB 1h</span>
+<span class="c1"># It is recommended to use padding_free. For more details, please refer to:</span>
+<span class="c1"># https://github.com/modelscope/ms-swift/blob/main/examples/train/padding_free/dpo.sh</span>
+<span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+swift<span class="w"> </span>rlhf<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--rlhf_type<span class="w"> </span>dpo<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model<span class="w"> </span>./models/Qwen2.5-7B-Instruct<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--train_type<span class="w"> </span>lora<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--dataset<span class="w"> </span>data/shareAI-Llama3-DPO-zh-en-emoji/merged_dpo_zh_emoji.converted.jsonl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--split_dataset_ratio<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--torch_dtype<span class="w"> </span>bfloat16<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--num_train_epochs<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--per_device_train_batch_size<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--per_device_eval_batch_size<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--learning_rate<span class="w"> </span>1e-4<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--lora_rank<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--lora_alpha<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--target_modules<span class="w"> </span>all-linear<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--gradient_accumulation_steps<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--eval_steps<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--save_steps<span class="w"> </span><span class="m">50</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--save_total_limit<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--logging_steps<span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max_length<span class="w"> </span><span class="m">2048</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output_dir<span class="w"> </span>output<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--warmup_ratio<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--dataloader_num_workers<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--rpo_alpha<span class="w"> </span><span class="m">0</span>.1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--dataset_num_proc<span class="w"> </span><span class="m">4</span>
+</pre></div>
 <p align="center">
 <img alt="No description has been provided for this image" src="output/v6-20250914-221953/images/eval_logps_chosen.png" width="800"/>
 </p>
@@ -9061,6 +9390,20 @@ swift rlhf \
 <p align="center">
 <img alt="No description has been provided for this image" src="output/v6-20250914-221953/images/eval_loss.png" width="800"/>
 </p>
+<div class="highlight"><pre><span></span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+swift<span class="w"> </span>infer<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--adapters<span class="w"> </span>output/v6-20250914-221953/checkpoint-152<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--stream<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--temperature<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max_new_tokens<span class="w"> </span><span class="m">2048</span>
+</pre></div>
+<h4 id="%E7%AE%80%E8%A6%81%E5%88%86%E6%9E%90">简要分析<a class="anchor-link" href="#%E7%AE%80%E8%A6%81%E5%88%86%E6%9E%90">¶</a></h4><ul>
+<li><strong>eval_loss（总体目标）</strong>: 由 0.1325 降至 0.1233，并在后期趋稳，表示整体收敛变好。</li>
+<li><strong>eval_nll_loss（对参考答案拟合）</strong>: 由 1.325 降至 1.233，说明对“正确答案”的概率分配更高。</li>
+<li><strong>accuracies（判别正确率）</strong>: 始终为 1.0（验证集全部判断正确）。</li>
+<li><strong>rewards 与 margin（分离度）</strong>: chosen 持续较高、rejected 较低；margin 在中期短暂回落（~21），后期回升并稳定在 ~36，表明优劣答案区分度恢复并保持良好。</li>
+</ul>
+<p>结论：模型已良好收敛，后期表现稳定且优于早期，既能稳定判别偏好，又提升了对参考答案的拟合度。</p>
 </div>
 </div>
 </div>
@@ -9071,7 +9414,7 @@ swift rlhf \
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A8-%E8%AF%84%E4%BC%B0%E4%B8%8E%E4%B8%8A%E7%BA%BF%EF%BC%9A%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%E3%80%81%E7%81%B0%E5%BA%A6%E4%B8%8E%E5%9B%9E%E6%BB%9A">A8 评估与上线：指标体系、灰度与回滚<a class="anchor-link" href="#A8-%E8%AF%84%E4%BC%B0%E4%B8%8E%E4%B8%8A%E7%BA%BF%EF%BC%9A%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%E3%80%81%E7%81%B0%E5%BA%A6%E4%B8%8E%E5%9B%9E%E6%BB%9A">¶</a></h2><p>构建任务正确率、遵循度、毒性与稳定性等指标体系，确定A/B与灰度发布流程及回滚触发条件；形成上线监控、异常处置与复盘机制的要点说明，确保从实验到生产的可追溯与可管控。</p>
+<h2 id="A9-%E8%AF%84%E4%BC%B0%E4%B8%8E%E4%B8%8A%E7%BA%BF%EF%BC%9A%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%E3%80%81%E7%81%B0%E5%BA%A6%E4%B8%8E%E5%9B%9E%E6%BB%9A">A9 评估与上线：指标体系、灰度与回滚<a class="anchor-link" href="#A9-%E8%AF%84%E4%BC%B0%E4%B8%8E%E4%B8%8A%E7%BA%BF%EF%BC%9A%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%E3%80%81%E7%81%B0%E5%BA%A6%E4%B8%8E%E5%9B%9E%E6%BB%9A">¶</a></h2><p>构建任务正确率、遵循度、毒性与稳定性等指标体系，确定A/B与灰度发布流程及回滚触发条件；形成上线监控、异常处置与复盘机制的要点说明，确保从实验到生产的可追溯与可管控。</p>
 <h3 id="%E4%B8%80%E3%80%81%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%EF%BC%88%E8%AF%84%E4%BB%80%E4%B9%88%E3%80%81%E6%80%8E%E4%B9%88%E8%AF%84%EF%BC%89">一、指标体系（评什么、怎么评）<a class="anchor-link" href="#%E4%B8%80%E3%80%81%E6%8C%87%E6%A0%87%E4%BD%93%E7%B3%BB%EF%BC%88%E8%AF%84%E4%BB%80%E4%B9%88%E3%80%81%E6%80%8E%E4%B9%88%E8%AF%84%EF%BC%89">¶</a></h3><ul>
 <li><strong>任务正确率（Task Accuracy）</strong>：回答是否正确、完整、可复现。<ul>
 <li>常用口径：精确匹配（Exact Match）、F1、基于证据的正确率（回答必须引用到的文档片段）、专家评分（Likert 1–5）。</li>
@@ -9224,121 +9567,6 @@ swift rlhf \
 </ul>
 </li>
 </ul>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2843b4dd">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="A9-%E6%89%A9%E5%B1%95%E8%AF%BE%E7%A8%8B-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%B9%BB%E8%A7%89%E7%BC%93%E8%A7%A3%EF%BC%9A%E8%AF%AD%E4%B9%89%E7%86%B5%E4%B8%8E%E5%A4%9A%E6%A8%A1%E5%9E%8B%E5%90%88%E4%BD%9C">A9 扩展课程-大模型幻觉缓解：语义熵与多模型合作<a class="anchor-link" href="#A9-%E6%89%A9%E5%B1%95%E8%AF%BE%E7%A8%8B-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%B9%BB%E8%A7%89%E7%BC%93%E8%A7%A3%EF%BC%9A%E8%AF%AD%E4%B9%89%E7%86%B5%E4%B8%8E%E5%A4%9A%E6%A8%A1%E5%9E%8B%E5%90%88%E4%BD%9C">¶</a></h2><p>采用同义改写得到条件分布，计算语义熵并设定阈值以触发“自动怀疑”；结合多模型一致性裁决降低错误风险；通过对照样例展示前后指标变化，并分析误报与漏报的权衡，给出部署时的建议阈值区间。</p>
-<h3 id="%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9A%E5%90%8C%E4%B9%89%E6%94%B9%E5%86%99%E5%BE%97%E5%88%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E5%B8%83%EF%BC%8C%E8%AE%A1%E7%AE%97%E8%AF%AD%E4%B9%89%E7%86%B5">方法一：同义改写得到条件分布，计算语义熵<a class="anchor-link" href="#%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9A%E5%90%8C%E4%B9%89%E6%94%B9%E5%86%99%E5%BE%97%E5%88%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E5%B8%83%EF%BC%8C%E8%AE%A1%E7%AE%97%E8%AF%AD%E4%B9%89%E7%86%B5">¶</a></h3><p>牛津大学Nature: 《Detecting hallucinations in large language models using semantic entropy》</p>
-<p align="center">
-<img alt="No description has been provided for this image" src="./image/12.png" width="800"/>
-</p>
-<p>图1 | 语义熵与虚构检测概述</p>
-<p>a. 基于熵的朴素不确定性度量会计算精确答案的变异程度，将“巴黎”“是巴黎”“法国的首都巴黎”视为不同答案。但这一方法不适用于部分语言任务——在这类任务中，有时不同表述的答案含义相同。我们提出的语义熵会先将含义相同的答案聚类，再计算熵值。<strong>语义熵值低</strong>表明大型语言模型（LLM）对答案的含义具有较高信心。</p>
-<p>b. 语义熵还可用于检测较长文本中的虚构内容。我们会自动将模型生成的长答案分解为多个“事实单元”（factoid）。对于每个事实单元，由一个LLM生成可能对应该事实单元的问题；随后，原始LLM针对这些问题生成M个可能的答案。最终，我们会计算每个特定问题对应的所有答案（包括原始事实单元）的语义熵。若某事实单元相关问题的<strong>平均语义熵值高</strong>，则表明该事实单元可能是虚构内容。如图所示，语义熵将“事实1”（Fact 1）归类为“可能非虚构”，因为尽管各答案表述差异极大，但含义往往一致——而这种一致性是基于熵的朴素度量方法会遗漏的。</p>
-<!-- （注：“confabulation”在人工智能与认知科学领域特指模型或个体在信息缺失/错误时，生成看似合理但与事实不符的内容，此处译为“虚构”以准确反映技术场景含义；“factoid”指文本中可独立验证的最小事实单元，译为“事实单元”以体现其颗粒度特征。） -->
-<ul>
-<li><strong>核心思想</strong>：通过对同一问题做多种同义改写，采样得到模型回答在“语义空间”的条件分布。如果回答集中到少数语义簇，说明语义确定性高；若分散到多个相互冲突的语义簇，说明不确定性高，幻觉风险上升。</li>
-<li><strong>步骤</strong><ol>
-<li>同义改写：对原始查询生成 M 条等价表述（建议 M=8–16，兼顾稳定性与成本）。</li>
-<li>回答采样：用固定温度（建议 temperature≈0.2–0.5）获取每个改写的回答。</li>
-<li>语义聚类：用文本嵌入计算回答两两相似度，将相似回答归为同一“语义簇”（阈值可用余弦相似度≥0.85–0.9）。</li>
-<li>概率估计：簇概率 p_i = 该簇回答数量 / 总回答数。</li>
-<li>语义熵：H = −∑ p_i log p_i。为便于阈值设置，可做归一化 H_norm = H / log K（K 为簇数上界或观测到的簇数），使 H_norm∈[0,1]。</li>
-<li>阈值触发“自动怀疑”：当 H_norm 超过阈值 T，则判定不确定，转入二次校验流程（如检索增强、追问澄清、多模型一致性裁决或人工复核）。</li>
-</ol>
-</li>
-</ul>
-<h3 id="%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9A%E5%A4%9A%E6%A8%A1%E5%9E%8B%E4%B8%80%E8%87%B4%E6%80%A7%E8%A3%81%E5%86%B3%EF%BC%88%E9%99%8D%E4%BD%8E%E5%8D%95%E4%B8%80%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E6%80%A7%E9%94%99%E8%AF%AF%EF%BC%89">方法二：多模型一致性裁决（降低单一模型系统性错误）<a class="anchor-link" href="#%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9A%E5%A4%9A%E6%A8%A1%E5%9E%8B%E4%B8%80%E8%87%B4%E6%80%A7%E8%A3%81%E5%86%B3%EF%BC%88%E9%99%8D%E4%BD%8E%E5%8D%95%E4%B8%80%E6%A8%A1%E5%9E%8B%E7%B3%BB%E7%BB%9F%E6%80%A7%E9%94%99%E8%AF%AF%EF%BC%89">¶</a></h3><ul>
-<li><strong>核心思想</strong>：不同模型的错因和偏差不完全相同。对同一问题并行询问 N 个模型（或同一模型不同解码策略），用语义一致性与多数原则裁决，减少单点错误。</li>
-<li><strong>步骤</strong><ol>
-<li>多模型回答：选择 N=2–3 个异构模型（如一个主模型+一个不同家族备选），或同一模型的多次少温采样。</li>
-<li>语义对齐：同上，用嵌入聚类衡量回答是否同义。</li>
-<li>一致性评分：一致性=最大簇占比；若一致性低于阈值（如 &lt;60–70%），判定为高风险。</li>
-<li>决策顺序：优先采用“有出处的答案”（带可验证证据或检索来源）→ 多数语义簇 → 不一致则触发检索/追问或人工复核。</li>
-</ol>
-</li>
-</ul>
-<h3 id="%E6%8C%87%E6%A0%87%E4%B8%8E%E5%AF%B9%E7%85%A7%E6%A0%B7%E4%BE%8B">指标与对照样例<a class="anchor-link" href="#%E6%8C%87%E6%A0%87%E4%B8%8E%E5%AF%B9%E7%85%A7%E6%A0%B7%E4%BE%8B">¶</a></h3><ul>
-<li><strong>评价指标</strong>：<ul>
-<li>幻觉率（Hallucination Rate）：错误且无依据的回答占比</li>
-<li>精确率/召回率：基于人工标注或可验证题集</li>
-<li>拒答率：因高不确定而触发“怀疑”的比例</li>
-<li>平均延迟与成本：并发调用带来的时延与费用变化</li>
-</ul>
-</li>
-<li><strong>样例 1（事实问答）</strong><ul>
-<li>问：澳大利亚的首都是哪里？</li>
-<li>基线（无防护）：单次回答常见“悉尼”（错误）；幻觉率较高。</li>
-<li>语义熵：同义改写后出现两大簇“堪培拉”（正确）与“悉尼”（错误），H_norm 高于阈值→触发检索增强；检索返回官方页面后收敛到“堪培拉”。</li>
-<li>多模型一致性：两个模型均回答“堪培拉”，一致性高→直接通过。</li>
-</ul>
-</li>
-<li><strong>示例性整体数据（内部验证集，示意）</strong><ul>
-<li>基线：幻觉率 8.1%，精确率 90.5%，平均延迟 1.0x，成本 1.0x</li>
-<li><ul>
-<li>语义熵触发（T=0.45）：幻觉率 4.0%，精确率 94.3%，拒答率 6.8%，延迟 1.25x，成本 1.2x</li>
-</ul>
-</li>
-<li><ul>
-<li>多模型一致性（N=2）：幻觉率 2.6%，精确率 96.1%，拒答率 8.9%，延迟 1.45x，成本 1.5x</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h3 id="%E9%98%88%E5%80%BC%E8%AE%BE%E7%BD%AE%E4%B8%8E%E6%9D%83%E8%A1%A1">阈值设置与权衡<a class="anchor-link" href="#%E9%98%88%E5%80%BC%E8%AE%BE%E7%BD%AE%E4%B8%8E%E6%9D%83%E8%A1%A1">¶</a></h3><ul>
-<li><strong>语义熵阈值（归一化 H_norm）</strong><ul>
-<li>建议区间：T ∈ [0.35, 0.55]。</li>
-<li>低阈值（如 0.35）：更敏感，误报多、漏报少；适合高风险/合规场景。</li>
-<li>高阈值（如 0.5）：更保守，误报少、漏报多；适合追求流畅体验的泛用场景。</li>
-</ul>
-</li>
-<li><strong>一致性阈值</strong><ul>
-<li>一致性=最大语义簇占比。</li>
-<li>建议区间：C ∈ [0.6, 0.75]。低于 C 触发“怀疑”。</li>
-<li>对应权衡与上类似：C 越高越严格，拒答/回退更多但更安全。</li>
-</ul>
-</li>
-<li><strong>联合决策（推荐）</strong><ul>
-<li>触发条件例：H_norm ≥ T 或 一致性 &lt; C → 启用检索增强或改问澄清；若仍不通过，再转人工。</li>
-<li>也可使用分层：先看一致性，再看语义熵，以减少不必要的并发计算。</li>
-</ul>
-</li>
-</ul>
-<h3 id="%E9%83%A8%E7%BD%B2%E5%BB%BA%E8%AE%AE">部署建议<a class="anchor-link" href="#%E9%83%A8%E7%BD%B2%E5%BB%BA%E8%AE%AE">¶</a></h3><ul>
-<li><strong>同义改写生成</strong>：可用小模型低成本生成，主模型仅用于回答与裁决。对高频问题做改写与回答结果缓存。</li>
-<li><strong>聚类实现</strong>：用向量数据库或本地向量库；相似度阈值从 0.85 起步微调。</li>
-<li><strong>成本与延迟控制</strong>：<ul>
-<li>优先语义熵（单模型多表述）→ 再走多模型一致性（仅在必要时启用）。</li>
-<li>动态配额：对低风险/低价值问题使用较高阈值或降采样。</li>
-</ul>
-</li>
-<li><strong>数据闭环</strong>：上线后记录被“怀疑”的样本与最终裁决，定期做 ROC/PR 分析，更新 T 与 C。</li>
-<li><strong>解释性与可用性</strong>：向用户呈现“已加验真”标记与可点击的依据来源链接；在拒答时说明不确定原因并建议可操作的重述方式。</li>
-</ul>
-<h3 id="%E8%AF%AF%E6%8A%A5%E4%B8%8E%E6%BC%8F%E6%8A%A5%E7%9A%84%E6%9D%83%E8%A1%A1">误报与漏报的权衡<a class="anchor-link" href="#%E8%AF%AF%E6%8A%A5%E4%B8%8E%E6%BC%8F%E6%8A%A5%E7%9A%84%E6%9D%83%E8%A1%A1">¶</a></h3><ul>
-<li><strong>误报（无错被判不确定）</strong>：增加拒答与成本，但能显著降低高风险错误；可通过提高 T 或 C、加入证据优先策略缓解。</li>
-<li><strong>漏报（有错未被拦截）</strong>：对高风险场景不可接受；通过降低 T、提高 C、引入检索/规则校验与人工复核降低。</li>
-<li><strong>实践建议</strong>：<ul>
-<li>一般问答：T≈0.45，C≈0.65；</li>
-<li>金融/医疗等高风险：T≈0.35–0.4，C≈0.7–0.75；</li>
-<li>资源受限/延迟敏感：T≈0.5–0.55，C≈0.6，并限制 M 与 N。</li>
-</ul>
-</li>
-</ul>
-<h3 id="%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E5%8F%AF%E7%9B%B4%E6%8E%A5%E8%90%BD%E5%9C%B0%EF%BC%89">最小可行流程（可直接落地）<a class="anchor-link" href="#%E6%9C%80%E5%B0%8F%E5%8F%AF%E8%A1%8C%E6%B5%81%E7%A8%8B%EF%BC%88%E5%8F%AF%E7%9B%B4%E6%8E%A5%E8%90%BD%E5%9C%B0%EF%BC%89">¶</a></h3><ul>
-<li>输入 → 同义改写（M 条） → 模型回答 → 语义聚类与 H_norm</li>
-<li>若 H_norm ≥ T → 检索增强/追问澄清 → 若仍不确定 → 多模型一致性（N 个）</li>
-<li>若一致性 &lt; C → 标记高风险并转人工；否则输出答案并附证据</li>
-</ul>
-<p>以上配置在多数通用问答中能在可控的延迟与成本内，将幻觉率从约 8% 压低到 2–4% 区间；具体阈值仍需结合业务数据以 ROC/PR 曲线微调。</p>
 </div>
 </div>
 </div>
