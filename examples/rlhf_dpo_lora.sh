@@ -1,12 +1,12 @@
-# 24GiB
+# 24GiB 1h
 # It is recommended to use padding_free. For more details, please refer to:
 # https://github.com/modelscope/ms-swift/blob/main/examples/train/padding_free/dpo.sh
 CUDA_VISIBLE_DEVICES=0 \
 swift rlhf \
     --rlhf_type dpo \
-    --model Qwen/Qwen2.5-7B-Instruct \
+    --model ./models/Qwen2.5-VL-3B-Instruct \
     --train_type lora \
-    --dataset hjh0119/shareAI-Llama3-DPO-zh-en-emoji \
+    --dataset ./data/shareAI-Llama3-DPO-zh-en-emoji/ \
     --split_dataset_ratio 0.01 \
     --torch_dtype bfloat16 \
     --num_train_epochs 1 \

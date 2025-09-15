@@ -8119,8 +8119,8 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <img alt="No description has been provided for this image" src="./image/11.png" width="400"/>
 </p>
 <p>如图为ZeRO-DP三阶段都启用的伪代码。先给每个进程都分配一部分层，前向传播时逐层<em>收集模型切片</em>然后计算然后<em>释放模型切片</em>，反向传播时逐层<em>收集模型切片</em>然后计算然后规约，然后<em>释放模型切片+梯度切片</em>。</p>
-<h3 id="3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">3 各微调范式介绍<a class="anchor-link" href="#3-%E5%90%84%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E4%BB%8B%E7%BB%8D">¶</a></h3><h4 id="3.1-Lora">3.1 Lora<a class="anchor-link" href="#3.1-Lora">¶</a></h4><h4 id="3.3-QLora">3.3 QLora<a class="anchor-link" href="#3.3-QLora">¶</a></h4><!-- https://zhuanlan.zhihu.com/p/1903385294344021244 -->
-<h3 id="FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">FPFT、LoRA、QLoRA 微调范式选型思路<a class="anchor-link" href="#FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">¶</a></h3><p>围绕三种主流范式，给出原理、显存估算、示例与适用场景，最后给出简明选型准则。</p>
+<!-- https://zhuanlan.zhihu.com/p/1903385294344021244 -->
+<h3 id="2-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">2 FPFT、LoRA、QLoRA 微调范式选型思路<a class="anchor-link" href="#2-FPFT%E3%80%81LoRA%E3%80%81QLoRA-%E5%BE%AE%E8%B0%83%E8%8C%83%E5%BC%8F%E9%80%89%E5%9E%8B%E6%80%9D%E8%B7%AF">¶</a></h3><p>围绕三种主流范式，给出原理、显存估算、示例与适用场景，最后给出简明选型准则。</p>
 <h4 id="%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">一、全参数微调（FPFT）<a class="anchor-link" href="#%E4%B8%80%E3%80%81%E5%85%A8%E5%8F%82%E6%95%B0%E5%BE%AE%E8%B0%83%EF%BC%88FPFT%EF%BC%89">¶</a></h4><ul>
 <li><strong>原理（做什么）</strong><ul>
 <li>更新模型全部权重，能够系统性重塑表示与推理过程；常配合混合精度与分布式（ZeRO-2/3）、激活检查点。</li>
@@ -8152,42 +8152,66 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 <h4 id="%E4%BA%8C%E3%80%81LoRA%EF%BC%88Low-Rank-Adaptation%EF%BC%89">二、LoRA（Low-Rank Adaptation）<a class="anchor-link" href="#%E4%BA%8C%E3%80%81LoRA%EF%BC%88Low-Rank-Adaptation%EF%BC%89">¶</a></h4><p align="center">
 <img alt="No description has been provided for this image" src="./image/13.png" width="300"/>
 </p>
-- **原理（做什么）**  
-  - 冻结基座，给部分权重矩阵注入低秩增量 $\Delta W = A B$，仅训练少量适配器参数，显著降显存/存储/部署成本。
-- **显存估算（怎么算）**  
-  - 基座（FP16/BF16）≈ $2X$ GB；LoRA 参数/梯度/优化器相对很小。  
-  - 总显存 ≈ $2X$ GB + 激活 + 少量开销；经验范围 ≈ (2.5–4)×X GB（取决于激活）。
-- **示例（多大卡能跑）**  
-  - 7B：基座 ≈14 GB；激活（有检查点、适中 batch/seq）≈5–15 GB → 总计 ≈20–30+ GB（24–40GB 卡可行）。  
-  - 70B：基座 ≈140 GB；总计 ≈160–190+ GB（2–3×80GB）。
-- **适用场景（何时用）**  
-  - 资源有限、需快速迭代/多域多版本（易插拔、便于合并/切换）。  
-  - 输入风格/格式偏移、中等强度偏好与安全对齐（SFT/DPO/RLHF 的主力路径）。
-- **注意点（风险与建议）**  
-  - 表达受限：rank/覆盖层数不足时上限受约束；必要时提高 rank/层覆盖或局部解冻。  
-  - 关键超参：  
-    - **rank r**（表达力/容量）、**alpha**（缩放）、**dropout**（正则）、  
-    - **target modules**（常见 q/k/v/o、MLP 投影层）、  
-    - **学习率/调度**（LoRA 参数可用较大学习率，注意稳定性）。
-
+<ul>
+<li><strong>原理（做什么）</strong><ul>
+<li>冻结基座，给部分权重矩阵注入低秩增量 $\Delta W = A B$，仅训练少量适配器参数，显著降显存/存储/部署成本。</li>
+</ul>
+</li>
+<li><strong>显存估算（怎么算）</strong><ul>
+<li>基座（FP16/BF16）≈ $2X$ GB；LoRA 参数/梯度/优化器相对很小。</li>
+<li>总显存 ≈ $2X$ GB + 激活 + 少量开销；经验范围 ≈ (2.5–4)×X GB（取决于激活）。</li>
+</ul>
+</li>
+<li><strong>示例（多大卡能跑）</strong><ul>
+<li>7B：基座 ≈14 GB；激活（有检查点、适中 batch/seq）≈5–15 GB → 总计 ≈20–30+ GB（24–40GB 卡可行）。</li>
+<li>70B：基座 ≈140 GB；总计 ≈160–190+ GB（2–3×80GB）。</li>
+</ul>
+</li>
+<li><strong>适用场景（何时用）</strong><ul>
+<li>资源有限、需快速迭代/多域多版本（易插拔、便于合并/切换）。</li>
+<li>输入风格/格式偏移、中等强度偏好与安全对齐（SFT/DPO/RLHF 的主力路径）。</li>
+</ul>
+</li>
+<li><strong>注意点（风险与建议）</strong><ul>
+<li>表达受限：rank/覆盖层数不足时上限受约束；必要时提高 rank/层覆盖或局部解冻。</li>
+<li>关键超参：<ul>
+<li><strong>rank r</strong>（表达力/容量）、<strong>alpha</strong>（缩放）、<strong>dropout</strong>（正则）、</li>
+<li><strong>target modules</strong>（常见 q/k/v/o、MLP 投影层）、</li>
+<li><strong>学习率/调度</strong>（LoRA 参数可用较大学习率，注意稳定性）。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 <h4 id="%E4%B8%89%E3%80%81QLoRA%EF%BC%884-bit-%E5%9F%BA%E5%BA%A7-+-LoRA%EF%BC%89">三、QLoRA（4-bit 基座 + LoRA）<a class="anchor-link" href="#%E4%B8%89%E3%80%81QLoRA%EF%BC%884-bit-%E5%9F%BA%E5%BA%A7-+-LoRA%EF%BC%89">¶</a></h4><p align="center">
 <img alt="No description has been provided for this image" src="./image/14.png" width="800"/>
 </p>
-- **原理（做什么）**  
-  - 将基座权重量化到 4-bit（如 NF4，常配 Double Quant），计算仍用 FP16/BF16，训练仅 LoRA 适配器；可配“分页优化器”降低峰值显存。
-- **显存估算（怎么算）**  
-  - 基座 4-bit 近似 ≈ $0.5X$ GB（含量化开销近似）；总显存多在 (0.7–1.5)×X GB。  
-  - 激活仍是大头，需同样依赖梯度检查点与 batch/seq 控制。
-- **示例（多大卡能跑）**  
-  - 7B：基座 ≈3.5–5 GB；总计常 10–16 GB（单卡 12–24GB 友好）。  
-  - 70B：在 80GB 单卡上有机会跑通（batch/seq 受限，吞吐较低）。
-- **适用场景（何时用）**  
-  - 单卡显存紧张（10–24GB）也要完成指令微调/原型验证。  
-  - 多域多版本、成本敏感、需要快速试错与上线演示。
-- **注意点（风险与建议）**  
-  - 量化误差可能影响难任务/细粒度对齐，建议：NF4 + 双量化、计算类型 BF16、谨慎量化嵌入/LayerNorm。  
-  - 可能需要提高 LoRA rank/扩大覆盖弥补量化损失；强烈建议激活检查点与小 batch 试跑观测峰值显存。
-
+<ul>
+<li><strong>原理（做什么）</strong><ul>
+<li>将基座权重量化到 4-bit（如 NF4，常配 Double Quant），计算仍用 FP16/BF16，训练仅 LoRA 适配器；可配“分页优化器”降低峰值显存。</li>
+</ul>
+</li>
+<li><strong>显存估算（怎么算）</strong><ul>
+<li>基座 4-bit 近似 ≈ $0.5X$ GB（含量化开销近似）；总显存多在 (0.7–1.5)×X GB。</li>
+<li>激活仍是大头，需同样依赖梯度检查点与 batch/seq 控制。</li>
+</ul>
+</li>
+<li><strong>示例（多大卡能跑）</strong><ul>
+<li>7B：基座 ≈3.5–5 GB；总计常 10–16 GB（单卡 12–24GB 友好）。</li>
+<li>70B：在 80GB 单卡上有机会跑通（batch/seq 受限，吞吐较低）。</li>
+</ul>
+</li>
+<li><strong>适用场景（何时用）</strong><ul>
+<li>单卡显存紧张（10–24GB）也要完成指令微调/原型验证。</li>
+<li>多域多版本、成本敏感、需要快速试错与上线演示。</li>
+</ul>
+</li>
+<li><strong>注意点（风险与建议）</strong><ul>
+<li>量化误差可能影响难任务/细粒度对齐，建议：NF4 + 双量化、计算类型 BF16、谨慎量化嵌入/LayerNorm。</li>
+<li>可能需要提高 LoRA rank/扩大覆盖弥补量化损失；强烈建议激活检查点与小 batch 试跑观测峰值显存。</li>
+</ul>
+</li>
+</ul>
 <h4 id="%E5%9B%9B%E3%80%81%E9%80%89%E5%9E%8B%E6%80%BB%E8%A7%88%EF%BC%88%E5%BF%AB%E9%80%9F%E5%86%B3%E7%AD%96%EF%BC%89">四、选型总览（快速决策）<a class="anchor-link" href="#%E5%9B%9B%E3%80%81%E9%80%89%E5%9E%8B%E6%80%BB%E8%A7%88%EF%BC%88%E5%BF%AB%E9%80%9F%E5%86%B3%E7%AD%96%EF%BC%89">¶</a></h4><ul>
 <li><strong>先看算力/时限</strong><ul>
 <li>单卡 ≤24GB：优先 QLoRA；24–80GB：优先 LoRA；充足多卡、追极限：FPFT。</li>
@@ -8237,6 +8261,7 @@ DeepSeek R1 技术报告中所讨论的 DeepSeek 三种不同推理模型的开�
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>命令行执行：</p>
 <div class="highlight"><pre><span></span><span class="c1"># conda环境</span>
 conda<span class="w"> </span>create<span class="w"> </span>-p<span class="w"> </span>./env<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
 conda<span class="w"> </span>activate<span class="w"> </span>./env
@@ -8263,6 +8288,25 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 git<span class="w"> </span>lfs<span class="w"> </span>pull
 <span class="nb">cd</span><span class="w"> </span>..
 </pre></div>
+<p>然后执行脚本</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=00f2f3fb">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<pre><code>mkdir data &amp;&amp; cd data
+git lfs install
+pip install torchvision
+
+pip install qwen-vl-utils[decord]
+git clone https://www.modelscope.cn/datasets/swift/self-cognition.git
+
+</code></pre>
 </div>
 </div>
 </div>
@@ -8285,6 +8329,70 @@ git<span class="w"> </span>lfs<span class="w"> </span>pull
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="A4%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E4%B8%8E%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87%EF%BC%9Aunsloth-/-ms-swift-/-llama-factory">A4框架选型与环境准备：unsloth / ms-swift / llama-factory<a class="anchor-link" href="#A4%E6%A1%86%E6%9E%B6%E9%80%89%E5%9E%8B%E4%B8%8E%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87%EF%BC%9Aunsloth-/-ms-swift-/-llama-factory">¶</a></h2><p>讲解两框架在 SFT/PEFT/对齐中的接口与流水线差异，结合显存与吞吐的经验阈值给出适配建议；完成环境验证与基线运行，记录资源占用、收敛速度与稳定性，为下午的案例训练提供可靠起点。</p>
+<h3 id="LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">LLaMA-Factory / Unsloth / ms-SWIFT 对比表<a class="anchor-link" href="#LLaMA-Factory-/-Unsloth-/-ms-SWIFT-%E5%AF%B9%E6%AF%94%E8%A1%A8">¶</a></h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>LLaMA-Factory</th>
+<th>Unsloth</th>
+<th>ms-SWIFT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>上手难度</td>
+<td>中等；提供 Gradio UI 与 CLI，适合不同层次用户</td>
+<td>低；API 简洁、文档详细，新手友好</td>
+<td>中等；依赖 ModelScope 生态，需了解框架集成，文档可能提供支持</td>
+</tr>
+<tr>
+<td>资源需求</td>
+<td>支持多硬件（NVIDIA/AMD GPU、Ascend NPU）；量化可降内存；全参微调显存高</td>
+<td>显存占用优化显著；手工优化 GPU 内核；资源效率高</td>
+<td>集成 PEFT；显存需求可能降低；优化依赖 ModelScope 底层</td>
+</tr>
+<tr>
+<td>显存占用</td>
+<td>量化可降显存，但全参微调占用高</td>
+<td>显著优化，适合有限硬件</td>
+<td>取决于 PEFT 与 ModelScope 实现</td>
+</tr>
+<tr>
+<td>性能表现</td>
+<td>支持 LoRA/DPO、FlashAttention 等；速度较 Unsloth 慢</td>
+<td>微调速度最快（快 2.5–10×）；大数据场景优势明显</td>
+<td>未知；依赖 PEFT，特定任务可能高效，缺少直观对比</td>
+</tr>
+<tr>
+<td>训练成本</td>
+<td>支持 4/8 位量化与分布式；全参微调成本高但灵活</td>
+<td>显存与时间成本低；适合快速迭代与受限资源</td>
+<td>PEFT 减少可调参数，成本或更低；生态依赖性强</td>
+</tr>
+<tr>
+<td>模型支持</td>
+<td>覆盖广（100+）；含多模态 LLaVA、MoE（Mixtral）；社区活跃</td>
+<td>兼容主流（Llama、Mistral 等）；覆盖略少于 LLaMA-Factory</td>
+<td>支持多架构与训练范式；依赖 ModelScope，可能对特定模型优化</td>
+</tr>
+<tr>
+<td>分布式训练</td>
+<td>支持多 GPU/多节点，适合大规模任务</td>
+<td>未明确；侧重单卡优化，或需外部工具扩展</td>
+<td>未明确；可能依赖 ModelScope 基础设施</td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>多硬件环境、复杂任务（多模态/RLHF）、需灵活配置</td>
+<td>资源有限、追求快速微调、单卡高效运行</td>
+<td>ModelScope 生态内任务、PEFT 需求、特定领域适配</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>核心结论：Unsloth 速度与显存效率最佳；LLaMA-Factory 最全面与灵活；ms-SWIFT 依托 ModelScope，适合生态内的 PEFT/定制场景</li>
+<li>不过，目前LLaMA-Factory还不支持GRPO；unsloth主要仅限于单卡场景</li>
+</ul>
 </div>
 </div>
 </div>
@@ -8486,16 +8594,473 @@ B：{output_b}
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="A7-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88%E4%B8%8E%E5%85%A5%E9%97%A8%E5%AE%9E%E8%B7%B5%EF%BC%9APPO-/-DPO-/-GRPO">A7 对齐算法概览与入门实践：PPO / DPO / GRPO<a class="anchor-link" href="#A7-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88%E4%B8%8E%E5%85%A5%E9%97%A8%E5%AE%9E%E8%B7%B5%EF%BC%9APPO-/-DPO-/-GRPO">¶</a></h2><p>解析三者在信号来源、稳定性与工程代价上的差异：PPO偏在线、信号获取成本高；DPO基于偏好对，路径简洁、易复现；GRPO通过分组奖励提升可控性。完成一个入门级偏好对齐示例，关注偏好数据构造、质量控制与伦理边界。</p>
-<h3 id="1-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88">1 对齐算法概览<a class="anchor-link" href="#1-%E5%AF%B9%E9%BD%90%E7%AE%97%E6%B3%95%E6%A6%82%E8%A7%88">¶</a></h3><h4 id="1.1-PPO">1.1 PPO<a class="anchor-link" href="#1.1-PPO">¶</a></h4><p>OpenAI《Proximal Policy Optimization Algorithms》</p>
-<h4 id="1.2-DPO">1.2 DPO<a class="anchor-link" href="#1.2-DPO">¶</a></h4><p>Standford《Direct Preference Optimization: Your Language Model is Secretly a Reward Model》</p>
+<h3 id="1-%E5%BC%95%E8%A8%80">1 引言<a class="anchor-link" href="#1-%E5%BC%95%E8%A8%80">¶</a></h3><p>大型语言模型（LLM）的进化速度令人瞩目。然而，如何让这些模型不仅“能说”，更能“会道”，使其回答更符合人类的价值观、偏好和期望，成为了业界的核心挑战。为了实现这一目标，一系列精巧的算法应运而生，它们如同“驯兽师”，引导着模型的行为，使其更好地为人类服务。</p>
+<p>在众多对齐（Alignment）技术中，强化学习扮演了至关重要的角色。其中，近端策略优化（Proximal Policy Optimization, PPO）、直接偏好优化（Direct Preference Optimization, DPO）以及最近备受关注的组别相对策略优化（Group Relative Policy Optimization, GRPO）是三颗璀璨的明星。它们代表了从“间接”到“直接”，从“个体”到“群体”的不同优化思路，深刻影响着当今大模型的训练范式。</p>
+<h3 id="2-%E4%B8%BA%E4%BD%95%E9%9C%80%E8%A6%81%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0%E4%B8%8E%E4%BA%BA%E7%B1%BB%E5%8F%8D%E9%A6%88%EF%BC%9F">2 为何需要强化学习与人类反馈？<a class="anchor-link" href="#2-%E4%B8%BA%E4%BD%95%E9%9C%80%E8%A6%81%E5%BC%BA%E5%8C%96%E5%AD%A6%E4%B9%A0%E4%B8%8E%E4%BA%BA%E7%B1%BB%E5%8F%8D%E9%A6%88%EF%BC%9F">¶</a></h3><p>在深入探讨具体算法之前，我们有必要先理解它们所要解决的根本问题：如何让模型变得“更好”？</p>
+<p>传统的监督微调（Supervised Fine-Tuning, SFT）是训练大模型的第一步。我们用大量高质量的“指令-回答”对来教模型模仿人类的说话方式。然而，SFT有其局限性。首先，高质量的 SFT 数据集构建成本高昂；其次，人类的偏好是复杂且主观的，很难用唯一的“正确答案”来概括。例如，对于“请写一首关于秋天的诗”这个指令，存在无数种优秀的回答，SFT 很难覆盖所有可能性，也无法告诉模型哪种风格的诗更受欢迎。</p>
+<p>为了解决这个问题，研究者们引入了<strong>从人类反馈中进行强化学习（Reinforcement Learning from Human Feedback, RLHF）</strong>的框架。RLHF 的核心思想是，不再直接告诉模型“正确答案是什么”，而是让模型生成一些回答，然后由人类来评判这些回答的好坏（例如，对多个回答进行排序），再利用这些偏好数据来“奖励”或“惩罚”模型，从而引导其生成更符合人类偏好的内容。</p>
+<p>这个过程通常分为三个阶段：</p>
+<ol>
+<li><strong>监督微调 (SFT)</strong>：使用高质量的标注数据对预训练模型进行初步微调，使其适应特定的指令格式。</li>
+<li><strong>奖励模型 (RM) 训练</strong>：让 SFT 模型对同一个指令生成多个不同的回答。人类标注者对这些回答进行排序，形成偏好数据（例如，回答 A &gt; 回答 B）。然后，用这些偏好数据训练一个奖励模型，该模型能够对任意一个“指令-回答”对打分，分数高低代表了人类的偏好程度。</li>
+<li><strong>强化学习 (RL) 优化</strong>：将奖励模型作为环境的“裁判”，使用强化学习算法（如 PPO）来微调 SFT 模型。模型（即 RL 中的“智能体”或“策略”）会不断生成回答，奖励模型会为其打分，RL 算法则根据分数来更新模型的参数，目标是最大化奖励模型的总得分。</li>
+</ol>
+<p>在这个框架中，PPO 长期以来都是第三阶段的绝对主力。然而，随着技术的发展，DPO 和 GRPO 提供了新的、可能更高效的路径。现在，让我们正式进入这三种算法的探索之旅。</p>
+<h3 id="3-%E8%BF%91%E7%AB%AF%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96%EF%BC%88PPO%EF%BC%89">3 近端策略优化（PPO）<a class="anchor-link" href="#3-%E8%BF%91%E7%AB%AF%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96%EF%BC%88PPO%EF%BC%89">¶</a></h3><p>OpenAI《Proximal Policy Optimization Algorithms》</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="./image/17.png" width="800"/>
+</p>
+<p>PPO 是 OpenAI 在 2017 年提出的一种强化学习算法，其设计的初衷是为了解决传统策略梯度算法（Policy Gradient）中训练不稳定、更新步长难以确定的问题。在 RLHF 的背景下，PPO 的稳定性和可靠性使其成为优化语言模型的首选。</p>
+<h4 id="3.1-PPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">3.1 PPO 的核心直觉<a class="anchor-link" href="#3.1-PPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">¶</a></h4><p>想象一下你在教一个孩子玩一个游戏。如果孩子每次尝试后，你都给予他非常剧烈的反馈（要么是极高的赞扬，要么是严厉的批评），他可能会感到困惑和不知所措，甚至放弃学习。一个更好的方法是，在他当前行为的基础上，温和地引导他向更好的方向改进，每次只做小小的调整。</p>
+<p>PPO 的核心思想与此类似。它认为，在更新模型的策略（即模型生成文本的方式）时，更新的步伐不应该太大。如果新策略与旧策略相差过大，可能会导致模型性能的急剧下降，即“掉下悬崖”。PPO 通过一个巧妙的机制，将策略更新限制在一个“近端”的、可信赖的区域内，从而保证了学习过程的稳定。</p>
+<h4 id="3.2-PPO-%E7%9A%84%E5%85%B3%E9%94%AE%E6%9C%BA%E5%88%B6%EF%BC%9AClipped-Surrogate-Objective">3.2 PPO 的关键机制：Clipped Surrogate Objective<a class="anchor-link" href="#3.2-PPO-%E7%9A%84%E5%85%B3%E9%94%AE%E6%9C%BA%E5%88%B6%EF%BC%9AClipped-Surrogate-Objective">¶</a></h4><p>PPO 的魔法在于其目标函数的设计。标准的策略梯度算法的目标是最大化期望回报。PPO 在此基础上引入了两个关键概念：概率比（Probability Ratio）和优势函数（Advantage Function）。</p>
+<ul>
+<li><strong>优势函数</strong>：代表在状态 $s$ 下，采取动作 $a$ 相较于平均水平有多好。在 RLHF 中，它通常由奖励模型（RM）的输出减去一个基线（Baseline，通常是另一个叫做“价值模型”的网络的输出）来估计。如果 $A &gt; 0$，说明这个回答比预期的要好，我们应该增加生成它的概率；反之则减少。</li>
+<li><strong>概率比</strong>：表示新策略 $\pi_{\theta}$ 和旧策略 $\pi_{\theta_{\text{old}}}$ 对于同一个动作的输出概率之比。如果 $r_t &gt; 1$，说明新策略更倾向于采取这个动作。</li>
+</ul>
+<p>PPO 的目标函数（简化版）如下：</p>
+<p>$$
+L^{\text{CLIP}}(\theta) = \mathbb{E}_t \left[ \min \left( r_t(\theta) A_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon) A_t \right) \right]
+$$</p>
+<p>让我们来解读这个公式：</p>
+<ul>
+<li>我们希望最大化概率比 $r_t$ 和优势函数 $A_t$ 的乘积。当优势 $A_t$ 为正时（好回答），我们希望增大 $r_t$；当优势为负时（坏回答），我们希望减小 $r_t$。这很直观。</li>
+<li>关键在于 clip 函数。clip(x, min, max) 会将 x 限制在 [min, max] 区间内。这里的 $\epsilon$ 是一个超参数（通常取 0.1 或 0.2），它定义了一个“信任区域”。</li>
+<li>min 函数的作用：<ul>
+<li>当优势 $A_t &gt; 0$ 时：我们希望增大 $r_t$，但 clip 函数将其上界限制在 $1 + \epsilon$。这意味着，即使某个回答非常好，我们对策略的更新也不会过于激进，防止“一步走得太大扯着蛋”。</li>
+<li>当优势 $A_t &lt; 0$ 时：我们希望减小 $r_t$，clip 函数将其下界限制在 $1 - \epsilon$。这意味着，我们也不会因为一个糟糕的回答而过度惩罚模型，给了模型“改过自新”的机会。</li>
+</ul>
+</li>
+</ul>
+<p>通过这种方式，PPO 像一个温和而有耐心的老师，确保模型在每次学习后都能稳定进步，而不会因为某次剧烈的更新而崩溃。</p>
+<h4 id="3.3-PPO-%E5%9C%A8-RLHF-%E4%B8%AD%E7%9A%84%E8%A7%92%E8%89%B2">3.3 PPO 在 RLHF 中的角色<a class="anchor-link" href="#3.3-PPO-%E5%9C%A8-RLHF-%E4%B8%AD%E7%9A%84%E8%A7%92%E8%89%B2">¶</a></h4><p>在 RLHF 流程中，PPO 的工作流程如下：</p>
+<ol>
+<li><strong>初始化</strong>：用 SFT 模型的权重初始化策略模型（Policy Model），并通常也用它来初始化价值模型（Value Model）。</li>
+<li><strong>采样</strong>：从一个指令数据集中随机抽取一个指令（Prompt）。</li>
+<li><strong>生成</strong>：策略模型根据指令生成一个回答。</li>
+<li><strong>评估</strong>：奖励模型（RM）对“指令-回答”对打分，得到奖励（Reward）。价值模型（Value Model）对指令进行评估，得到价值（Value）。</li>
+<li><strong>计算优势</strong>：根据奖励和价值计算优势函数。</li>
+<li><strong>更新</strong>：使用 PPO 的 Clipped Surrogate Objective 计算损失，并更新策略模型和价值模型的参数。</li>
+<li><strong>循环</strong>：重复步骤 2-6，直到模型收敛。</li>
+</ol>
+<p>同时，为了防止模型在优化过程中“忘记”SFT 阶段学到的知识，或者为了防止模型生成一些虽然奖励高但内容乱七八糟的文本，PPO 的损失函数中通常还会加入一个 KL 散度惩罚项。这个惩罚项用来衡量当前策略与初始 SFT 策略的差异，差异越大，惩罚越重，确保模型在追求高奖励的同时，不会偏离其原始的语言能力。</p>
+<h4 id="3.4-PPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%EF%BC%88%E6%A6%82%E5%BF%B5%E6%80%A7%EF%BC%89">3.4 PPO 的简单代码示例（概念性）<a class="anchor-link" href="#3.4-PPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%EF%BC%88%E6%A6%82%E5%BF%B5%E6%80%A7%EF%BC%89">¶</a></h4><p>下面的 Python 代码使用 PyTorch 风格展示了 PPO 损失函数的核心计算逻辑，旨在帮助理解，而非一个可直接运行的完整训练脚本。</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">ppo_loss</span><span class="p">(</span><span class="n">new_log_probs</span><span class="p">,</span> <span class="n">old_log_probs</span><span class="p">,</span> <span class="n">advantages</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    计算 PPO 的核心损失。</span>
+
+<span class="sd">    参数:</span>
+<span class="sd">    - new_log_probs: 新策略下，采取动作的对数概率</span>
+<span class="sd">    - old_log_probs: 旧策略下，采取动作的对数概率</span>
+<span class="sd">    - advantages: 优势函数值</span>
+<span class="sd">    - rewards: 实际获得的奖励</span>
+<span class="sd">    - values: 价值模型的预测值</span>
+<span class="sd">    - epsilon: PPO clip 的超参数</span>
+<span class="sd">    """</span>
+    
+    <span class="c1"># 1. 计算概率比 r_t(theta)</span>
+    <span class="c1"># log_probs 是 log(probability)，所以用 exp() 转换回 probability</span>
+    <span class="c1"># r_t = pi_theta(a|s) / pi_theta_old(a|s)</span>
+    <span class="c1"># 在对数空间中，这等价于 exp(log_pi_theta - log_pi_theta_old)</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">new_log_probs</span> <span class="o">-</span> <span class="n">old_log_probs</span><span class="p">)</span>
+
+    <span class="c1"># 2. 计算 PPO 的 policy loss (actor loss)</span>
+    <span class="c1"># Surrogate Objective 1: r_t * A_t</span>
+    <span class="n">surr1</span> <span class="o">=</span> <span class="n">ratio</span> <span class="o">*</span> <span class="n">advantages</span>
+    
+    <span class="c1"># Surrogate Objective 2: clip(r_t, 1-eps, 1+eps) * A_t</span>
+    <span class="n">surr2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">ratio</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">epsilon</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span> <span class="o">*</span> <span class="n">advantages</span>
+
+    <span class="c1"># PPO 的目标是最大化这个 E[...]，在梯度下降中，我们最小化其相反数</span>
+    <span class="c1"># L_clip = - E[min(surr1, surr2)]</span>
+    <span class="n">policy_loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">surr1</span><span class="p">,</span> <span class="n">surr2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="c1"># 3. 计算 value loss (critic loss)</span>
+    <span class="c1"># 通常使用均方误差 (MSE)</span>
+    <span class="c1"># 价值模型的目标是准确预测未来的累积奖励</span>
+    <span class="n">value_loss</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">rewards</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    
+    <span class="c1"># 总损失是两者的加权和</span>
+    <span class="c1"># loss = policy_loss + c1 * value_loss - c2 * entropy_bonus</span>
+    <span class="c1"># 这里为了简化，只返回 policy loss 和 value loss</span>
+    <span class="k">return</span> <span class="n">policy_loss</span><span class="p">,</span> <span class="n">value_loss</span>
+
+<span class="c1"># --- 模拟数据 ---</span>
+<span class="c1"># 假设我们有一个 batch 的数据</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="c1"># 新策略的对数概率</span>
+<span class="n">new_log_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># 旧策略的对数概率 (在更新前计算并固定)</span>
+<span class="n">old_log_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="c1"># 优势函数 (从 RM 和 Value Model 计算得到)</span>
+<span class="n">advantages</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="c1"># 实际回报</span>
+<span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="c1"># 价值模型的预测</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># 计算损失</span>
+<span class="n">p_loss</span><span class="p">,</span> <span class="n">v_loss</span> <span class="o">=</span> <span class="n">ppo_loss</span><span class="p">(</span><span class="n">new_log_probs</span><span class="p">,</span> <span class="n">old_log_probs</span><span class="p">,</span> <span class="n">advantages</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Policy Loss: </span><span class="si">{</span><span class="n">p_loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Value Loss: </span><span class="si">{</span><span class="n">v_loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># 在实际训练中，你会计算总损失并调用 loss.backward()</span>
+</pre></div>
+<h4 id="3.5-PPO-%E7%9A%84%E6%8C%91%E6%88%98">3.5 PPO 的挑战<a class="anchor-link" href="#3.5-PPO-%E7%9A%84%E6%8C%91%E6%88%98">¶</a></h4><p>尽管 PPO 非常成功，但 RLHF 中的 PPO 流程相当复杂。它需要同时维护和训练多个模型（策略模型、价值模型、奖励模型、SFT 参考模型），这使得训练过程非常消耗计算资源和内存，且超参数调整也颇具挑战。正是这些挑战，催生了更简洁的替代方案——DPO。</p>
+<h3 id="4-%E7%9B%B4%E6%8E%A5%E5%81%8F%E5%A5%BD%E4%BC%98%E5%8C%96%EF%BC%88DPO%EF%BC%89">4 直接偏好优化（DPO）<a class="anchor-link" href="#4-%E7%9B%B4%E6%8E%A5%E5%81%8F%E5%A5%BD%E4%BC%98%E5%8C%96%EF%BC%88DPO%EF%BC%89">¶</a></h3><p>Standford《Direct Preference Optimization: Your Language Model is Secretly a Reward Model》</p>
 <p align="center">
 <img alt="No description has been provided for this image" src="./image/16.png" width="800"/>
 </p>
-<h4 id="1.3-GRPO">1.3 GRPO<a class="anchor-link" href="#1.3-GRPO">¶</a></h4><p>DeepSeek-AI《DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models》</p>
+<p>DPO 由斯坦福大学的研究者于 2023 年提出，它以一种惊人的简洁性，对传统的 RLHF 流程发起了挑战。DPO 的核心洞见是：我们完全可以绕过奖励模型建模这一中间步骤，直接利用人类的偏好数据来优化语言模型。</p>
+<h4 id="4.1-DPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">4.1 DPO 的核心直觉<a class="anchor-link" href="#4.1-DPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">¶</a></h4><p>传统 RLHF 是一个“两步走”的过程：先用偏好数据（A 比 B 好）训练一个能给绝对分数（A 得 90 分，B 得 60 分）的奖励模型，然后再用这个分数去指导强化学习。</p>
+<p>DPO 的提出者反思道：我们最终的目标不就是让模型知道“A 比 B 好”吗？为什么非要先把它变成“A=90分，B=60分”，再回头去学习这个偏好呢？这个中间的奖励建模步骤不仅复杂，还可能引入误差。我们能不能直接建立一个从“偏好”到“策略更新”的数学桥梁？</p>
+<p>DPO 做到了这一点。它巧妙地将偏好数据和语言模型的策略联系起来，推导出了一个简单的、可以用分类损失函数直接优化的目标。</p>
+<h4 id="4.2-DPO-%E7%9A%84%E6%95%B0%E5%AD%A6%E9%AD%94%E6%B3%95%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">4.2 DPO 的数学魔法：从偏好到损失<a class="anchor-link" href="#4.2-DPO-%E7%9A%84%E6%95%B0%E5%AD%A6%E9%AD%94%E6%B3%95%EF%BC%9A%E4%BB%8E%E5%81%8F%E5%A5%BD%E5%88%B0%E6%8D%9F%E5%A4%B1">¶</a></h4><p>DPO 的理论推导略显复杂，但其最终的损失函数却异常优雅。它始于一个名为 Bradley-Terry 的模型，该模型常用于根据成对比较来估计事物的排名。DPO 假设人类的偏好概率 $P(w &gt; l | x)$ 可以用一个潜在的奖励模型 $R$ 来建模：</p>
+<p>$$
+P(w &gt; l | x) = \frac{\exp(R(w, x))}{\exp(R(w, x)) + \exp(R(l, x))}
+$$</p>
+<p>这里，$w$ 是被偏好的回答（winner），$l$ 是不被偏好的回答（loser），$x$ 是指令。 $\beta$ 是一个控制敏感度的常数。这个公式本质上是一个 Sigmoid 函数，表示 $w$ 的奖励比 $l$ 高得越多，人类偏好 $w$ 的概率就越大。</p>
+<p>接下来是 DPO 最关键的一步。它通过一系列精妙的数学变换，证明了优化语言模型 $\pi$ 以最大化这个奖励，等价于最小化以下损失函数：</p>
+<p>$$
+L(\pi) = -\sum_{(x, w, l) \in D} \log \sigma(\beta (\log \pi(w|x) - \log \pi(l|x)))
+$$</p>
+<p>让我们来解读这个“天书般”的公式：</p>
+<ul>
+<li>$D$ 是我们的偏好数据集，包含了大量的 $(x, w, l)$ 三元组。</li>
+<li>$\pi$ 是我们正在训练的模型。</li>
+<li>$\pi_{\text{ref}}$ 是一个参考模型，通常就是 SFT 阶段得到的模型。它的作用和 PPO 中的 KL 散度惩罚项类似，是为了防止模型“跑偏”。</li>
+<li>$\log \pi(w|x) - \log \pi(l|x)$ 衡量了当前模型相对于参考模型，生成回答 $w$ 的概率增加了多少。我们可以把 $\log \pi(w|x) - \log \pi(l|x)$ 看作是模型对回答 $w$ 的“隐式奖励”。</li>
+</ul>
+<p>核心部分是括号里的差值：隐式奖励。DPO 的目标就是最大化这个差值。也就是说，它希望当前模型生成“获胜”回答的概率相对于参考模型的增幅，要远大于生成“失败”回答的概率的增幅。</p>
+<p>最外层的 $\log-\sigma$ (log-sigmoid) 结构，使得这个目标变成了一个标准的二元交叉熵损失。这正是 DPO 的绝妙之处，它将复杂的强化学习问题，转化为了一个我们非常熟悉的分类问题。</p>
+<h4 id="4.3-DPO-%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B">4.3 DPO 的工作流程<a class="anchor-link" href="#4.3-DPO-%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B">¶</a></h4><p>相比 PPO，DPO 的流程大大简化：</p>
+<ol>
+<li><strong>准备数据</strong>：收集偏好数据集，每条数据是 $(\text{指令}, \text{胜出回答}, \text{失败回答})$ 的形式。</li>
+<li><strong>初始化</strong>：加载 SFT 模型作为训练的初始模型 $\pi$，并复制一份作为参考模型 $\pi_{\text{ref}}$（在训练中其参数被冻结）。</li>
+<li><strong>训练</strong>：使用上述 DPO 损失函数进行训练。在每个训练步骤中：<ul>
+<li>取一个批次（batch）的偏好数据。</li>
+<li>分别计算模型 $\pi$ 和 $\pi_{\text{ref}}$ 在指令下，生成 $w$ 和 $l$ 的概率。</li>
+<li>代入 DPO 损失函数公式，计算损失。</li>
+<li>反向传播，更新 $\pi$ 的参数。</li>
+</ul>
+</li>
+<li><strong>完成</strong>：训练结束后，$\pi$ 就是对齐好的模型。</li>
+</ol>
+<p>整个过程不需要训练一个独立的奖励模型，也不需要复杂的采样和优势计算，更没有价值模型。这使得 DPO 在实现上更简单，训练更稳定，也更节省计算资源。</p>
+<h4 id="4.4-DPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B">4.4 DPO 的简单代码示例<a class="anchor-link" href="#4.4-DPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B">¶</a></h4><p>Hugging Face 的 trl 库提供了 DPOTrainer，使得 DPO 的实现变得非常简单。以下是一个概念性的代码片段，展示了其核心逻辑。</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_sigmoid</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">dpo_loss</span><span class="p">(</span><span class="n">policy_chosen_logps</span><span class="p">,</span> <span class="n">policy_rejected_logps</span><span class="p">,</span>
+             <span class="n">reference_chosen_logps</span><span class="p">,</span> <span class="n">reference_rejected_logps</span><span class="p">,</span>
+             <span class="n">beta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    计算 DPO 损失。</span>
+
+<span class="sd">    参数:</span>
+<span class="sd">    - policy_chosen_logps: 策略模型对胜出回答的对数概率</span>
+<span class="sd">    - policy_rejected_logps: 策略模型对失败回答的对数概率</span>
+<span class="sd">    - reference_chosen_logps: 参考模型对胜出回答的对数概率</span>
+<span class="sd">    - reference_rejected_logps: 参考模型对失败回答的对数概率</span>
+<span class="sd">    - beta: DPO 的温度超参数</span>
+<span class="sd">    """</span>
+
+    <span class="c1"># 1. 计算策略模型和参考模型的“隐式奖励”</span>
+    <span class="c1"># pi_logratios = log(pi_policy / pi_ref) = log(pi_policy) - log(pi_ref)</span>
+    <span class="n">pi_logratios_chosen</span> <span class="o">=</span> <span class="n">policy_chosen_logps</span> <span class="o">-</span> <span class="n">reference_chosen_logps</span>
+    <span class="n">pi_logratios_rejected</span> <span class="o">=</span> <span class="n">policy_rejected_logps</span> <span class="o">-</span> <span class="n">reference_rejected_logps</span>
+    
+    <span class="c1"># 2. 计算 DPO 损失函数的核心部分</span>
+    <span class="c1"># DPO 的目标是最大化 (pi_logratios_chosen - pi_logratios_rejected)</span>
+    <span class="n">logits</span> <span class="o">=</span> <span class="n">pi_logratios_chosen</span> <span class="o">-</span> <span class="n">pi_logratios_rejected</span>
+    
+    <span class="c1"># 3. 应用 log-sigmoid 形式的二元交叉熵损失</span>
+    <span class="c1"># 我们希望 logits 尽可能大，等价于最小化 -log_sigmoid(logits)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">log_sigmoid</span><span class="p">(</span><span class="n">beta</span> <span class="o">*</span> <span class="n">logits</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">loss</span>
+
+<span class="c1"># --- 模拟数据 ---</span>
+<span class="n">batch_size</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="c1"># 假设我们已经从模型中获取了这些对数概率</span>
+<span class="n">policy_chosen_logps</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">policy_rejected_logps</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">reference_chosen_logps</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="n">reference_rejected_logps</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="n">beta</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+<span class="c1"># 计算损失</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">dpo_loss</span><span class="p">(</span><span class="n">policy_chosen_logps</span><span class="p">,</span> <span class="n">policy_rejected_logps</span><span class="p">,</span>
+                <span class="n">reference_chosen_logps</span><span class="p">,</span> <span class="n">reference_rejected_logps</span><span class="p">,</span>
+                <span class="n">beta</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"DPO Loss: </span><span class="si">{</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># 实际使用中，DPOTrainer 会帮你处理好这一切</span>
+</pre></div>
+<h4 id="4.5-DPO-%E7%9A%84%E6%9D%83%E8%A1%A1">4.5 DPO 的权衡<a class="anchor-link" href="#4.5-DPO-%E7%9A%84%E6%9D%83%E8%A1%A1">¶</a></h4><p>DPO 虽然简洁高效，但也有其适用场景和潜在的局限。DPO 强依赖于高质量的成对偏好数据。如果偏好数据的质量不高，或者标注不一致，DPO 的效果可能会受到影响。此外，由于其直接优化的特性，它对于数据分布的变化可能比 PPO 更敏感。在某些需要精细控制奖励函数的复杂场景下，PPO 的灵活性可能依然具有优势。</p>
+<h3 id="5-%E7%BB%84%E5%88%AB%E7%9B%B8%E5%AF%B9%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96%EF%BC%88GRPO%EF%BC%89">5 组别相对策略优化（GRPO）<a class="anchor-link" href="#5-%E7%BB%84%E5%88%AB%E7%9B%B8%E5%AF%B9%E7%AD%96%E7%95%A5%E4%BC%98%E5%8C%96%EF%BC%88GRPO%EF%BC%89">¶</a></h3><p>DeepSeek-AI《DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models》</p>
 <p align="center">
 <img alt="No description has been provided for this image" src="./image/15.png" width="800"/>
 </p>
-<h3 id="2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">2 入门级偏好对齐示例，关注偏好数据构造、质量控制与伦理边界<a class="anchor-link" href="#2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">¶</a></h3>
+<p>就在 PPO 和 DPO 的讨论如火如荼之时，DeepSeek-AI 在其模型（如 DeepSeekMath 和 DeepSeek-R1）的训练中，提出并使用了一种名为 GRPO 的新方法，为 RLHF 带来了新的视角。GRPO 可以看作是 PPO 的一个变种，它通过一种新颖的方式来估计优势函数，从而省去了 PPO 中昂贵的价值模型（Critic Model）。</p>
+<h4 id="5.1-GRPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">5.1 GRPO 的核心直觉<a class="anchor-link" href="#5.1-GRPO-%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%B4%E8%A7%89">¶</a></h4><p>PPO 的核心是优势函数 $A_t$，它需要一个奖励模型 $R$ 来提供奖励，还需要一个价值模型 $V$ 来提供基线（Baseline），即在状态 $s$ 下的平均期望回报。训练和维护这个价值模型是 PPO 流程中主要的复杂性和成本来源之一。</p>
+<p>GRPO 的提出者思考：我们能不能找到一种更简单的方式来估计这个“平均水平”呢？</p>
+<p>他们的答案是：利用群体智慧。对于同一个指令，我们不只生成一个回答，而是生成一组（Group）回答。然后，我们假设这组回答的平均奖励，就可以近似地作为当前策略下的“平均水平”，也就是价值 $V(s)$ 的一个估计。</p>
+<p>这个想法非常直观。想象一下，要评价一个学生这次考试的成绩（某个回答的奖励）是好是坏（优势），我们不需要知道他历史上的平均分（价值模型的输出），我们可以直接看他这次在班级里（一组回答中）的排名。如果他的分数远高于班级平均分，那么他的优势就是正的，反之亦然。</p>
+<h4 id="5.2-GRPO-%E7%9A%84%E5%85%B3%E9%94%AE%E6%9C%BA%E5%88%B6%EF%BC%9A%E7%BB%84%E5%86%85%E4%BC%98%E5%8A%BF%E4%BC%B0%E8%AE%A1">5.2 GRPO 的关键机制：组内优势估计<a class="anchor-link" href="#5.2-GRPO-%E7%9A%84%E5%85%B3%E9%94%AE%E6%9C%BA%E5%88%B6%EF%BC%9A%E7%BB%84%E5%86%85%E4%BC%98%E5%8A%BF%E4%BC%B0%E8%AE%A1">¶</a></h4><p>GRPO 的核心是对 PPO 中优势函数的计算方式进行了修改。其步骤如下：</p>
+<ul>
+<li><strong>组采样 (Group Sampling)</strong>：对于一个给定的指令 $x$，使用当前的策略模型 $\pi$ 生成一个包含 $N$ 个回答的组 $\{a_1, a_2, \ldots, a_N\}$。</li>
+<li><strong>组评估 (Group Evaluation)</strong>：使用一个奖励函数（可以是一个训练好的奖励模型，也可以是某种可计算的启发式规则，例如代码的执行结果、数学题的答案是否正确等）为组内的每一个回答 $a_i$ 打分，得到奖励 $R(a_i, x)$。</li>
+<li><strong>组内优势计算 (Group-Relative Advantage Estimation)</strong>：计算组内所有回答的平均奖励 $\bar{R}$ 和标准差 $\sigma_R$。对于组内的每一个回答 $a_i$，其优势被定义为其归一化后的奖励：</li>
+</ul>
+<p>$$
+A(a_i, x) = \frac{R(a_i, x) - \bar{R}}{\sigma_R}
+$$</p>
+<p>这种方法被称为组内奖励归一化（Group-wise Reward Normalization）。它直接用组内的统计量（均值和标准差）来替代了 PPO 中需要专门训练的价值模型所扮演的角色。</p>
+<ul>
+<li><strong>策略更新</strong>：一旦计算出了每个样本的优势 $A(a_i, x)$，接下来的步骤就和 PPO 非常相似了。GRPO 同样使用 Clipped Surrogate Objective 来更新策略模型。</li>
+</ul>
+<p>$$
+L^{\text{GRPO}}(\theta) = \mathbb{E}_t \left[ \min \left( r_t(\theta) A_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon) A_t \right) \right]
+$$</p>
+<p>其中 $r_t$ 是概率比，$A_t$ 是上面计算出的组内相对优势。</p>
+<h4 id="5.3-GRPO-%E7%9A%84%E4%BC%98%E5%8A%BF%E4%B8%8E%E7%89%B9%E7%82%B9">5.3 GRPO 的优势与特点<a class="anchor-link" href="#5.3-GRPO-%E7%9A%84%E4%BC%98%E5%8A%BF%E4%B8%8E%E7%89%B9%E7%82%B9">¶</a></h4><ul>
+<li><strong>高效性</strong>：GRPO 最显著的优势是无需价值模型。价值模型通常和策略模型一样大，去掉它可以节省近一半的训练内存和计算量，这对于训练超大规模模型来说意义重大。</li>
+<li><strong>灵活性</strong>：GRPO 对奖励函数的定义非常灵活。它不一定需要一个端到端训练的神经网络奖励模型。在某些任务中（如代码生成、数学推理），我们可以设计出可验证的奖励函数（Verifiable Reward Functions）。例如，如果生成的代码能成功运行并通过所有单元测试，就给予高奖励；如果数学题的最终答案正确，也给予高奖励。这种方式使得奖励信号更客观、更廉价。</li>
+<li><strong>稳定性</strong>：通过组内归一化，GRPO 使得优势函数的尺度保持在一个稳定的范围内，这有助于稳定训练过程，减少了对超参数的敏感性。</li>
+</ul>
+<h4 id="5.4-GRPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%EF%BC%88%E6%A6%82%E5%BF%B5%E6%80%A7%EF%BC%89">5.4 GRPO 的简单代码示例（概念性）<a class="anchor-link" href="#5.4-GRPO-%E7%9A%84%E7%AE%80%E5%8D%95%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%EF%BC%88%E6%A6%82%E5%BF%B5%E6%80%A7%EF%BC%89">¶</a></h4><p>下面的代码片段展示了 GRPO 中计算组内相对优势的核心逻辑。</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">grpo_advantage_estimation</span><span class="p">(</span><span class="n">rewards_in_group</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    计算 GRPO 的组内相对优势。</span>
+
+<span class="sd">    参数:</span>
+<span class="sd">    - rewards_in_group: 一个组内所有样本的奖励，形状为 [group_size]</span>
+<span class="sd">    """</span>
+    
+    <span class="c1"># 1. 计算组内奖励的均值和标准差</span>
+    <span class="n">mean_reward</span> <span class="o">=</span> <span class="n">rewards_in_group</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="c1"># 添加一个小的 epsilon 防止除以零</span>
+    <span class="n">std_reward</span> <span class="o">=</span> <span class="n">rewards_in_group</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-8</span>
+    
+    <span class="c1"># 2. 计算归一化后的优势</span>
+    <span class="n">advantages</span> <span class="o">=</span> <span class="p">(</span><span class="n">rewards_in_group</span> <span class="o">-</span> <span class="n">mean_reward</span><span class="p">)</span> <span class="o">/</span> <span class="n">std_reward</span>
+    
+    <span class="k">return</span> <span class="n">advantages</span>
+
+<span class="c1"># --- 模拟数据 ---</span>
+<span class="c1"># 假设对于一个 prompt，我们生成了 8 个回答 (group_size=8)</span>
+<span class="n">group_size</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="c1"># 奖励模型为这 8 个回答打分</span>
+<span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">11.0</span><span class="p">])</span>
+
+<span class="c1"># 计算 GRPO 优势</span>
+<span class="n">advantages</span> <span class="o">=</span> <span class="n">grpo_advantage_estimation</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Rewards in group:"</span><span class="p">,</span> <span class="n">rewards</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"GRPO Advantages:"</span><span class="p">,</span> <span class="n">advantages</span><span class="p">)</span>
+
+<span class="c1"># 得到的 advantages 随后会像 PPO 一样，被用于计算 clipped surrogate loss</span>
+<span class="c1"># 例如，对于奖励为 15.0 的那个样本，它的优势是最高的 (正值)</span>
+<span class="c1"># 对于奖励为 5.0 的那个样本，它的优势是最低的 (负值)</span>
+<span class="c1"># 优势的均值近似为 0</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Mean of advantages:"</span><span class="p">,</span> <span class="n">advantages</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> 
+</pre></div>
+<h4 id="5.5-GRPO-%E7%9A%84%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF">5.5 GRPO 的适用场景<a class="anchor-link" href="#5.5-GRPO-%E7%9A%84%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF">¶</a></h4><p>GRPO 特别适用于以下场景：</p>
+<ul>
+<li><strong>计算资源受限</strong>：当你希望以更低的成本进行 RLHF 训练时，GRPO 是一个极具吸引力的选择。</li>
+<li><strong>存在客观评价标准</strong>：在代码、数学、科学等领域，可以通过程序化、确定性的方式来评估生成内容的质量，GRPO 可以充分利用这种廉价而准确的奖励信号。</li>
+<li><strong>需要提升模型推理能力</strong>：DeepSeek 的实践表明，通过精心设计的奖励函数和 GRPO 训练，可以显著提升模型在复杂推理任务上的表现。</li>
+</ul>
+<h3 id="6-PPO%E3%80%81DPO-%E4%B8%8E-GRPO-%E7%9A%84%E5%85%A8%E6%96%B9%E4%BD%8D%E5%AF%B9%E6%AF%94">6 PPO、DPO 与 GRPO 的全方位对比<a class="anchor-link" href="#6-PPO%E3%80%81DPO-%E4%B8%8E-GRPO-%E7%9A%84%E5%85%A8%E6%96%B9%E4%BD%8D%E5%AF%B9%E6%AF%94">¶</a></h3><p>经过前面的详细介绍，我们现在可以从多个维度对这三种算法进行一个全面的比较，以帮助您在实际应用中做出更合适的选择。</p>
+<table>
+<thead>
+<tr>
+<th>特性维度</th>
+<th>PPO (Proximal Policy Optimization)</th>
+<th>DPO (Direct Preference Optimization)</th>
+<th>GRPO (Group Relative Policy Optimization)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>核心思想</td>
+<td>在可信区域内小步更新策略，以最大化奖励模型给出的分数。</td>
+<td>直接将成对的偏好数据转化为一个分类损失，绕过奖励建模。</td>
+<td>通过组内回答的相对好坏来估计优势，从而指导策略更新。</td>
+</tr>
+<tr>
+<td>方法论</td>
+<td>On-policy 强化学习</td>
+<td>Off-policy 偏好学习 (类似于分类)</td>
+<td>On-policy 强化学习</td>
+</tr>
+<tr>
+<td>所需模型</td>
+<td>4个：策略模型、价值模型 (Critic)、奖励模型 (RM)、SFT 参考模型。</td>
+<td>2个：策略模型、SFT 参考模型。</td>
+<td>3个 (通常)：策略模型、奖励函数/模型、SFT 参考模型。无价值模型。</td>
+</tr>
+<tr>
+<td>数据需求</td>
+<td>需要奖励模型能给出的绝对分数。</td>
+<td>需要成对的偏好数据 。</td>
+<td>需要奖励函数/模型能给出的分数 (可以是相对的)。</td>
+</tr>
+<tr>
+<td>计算成本</td>
+<td>最高。需要维护和训练多个大型模型，且有复杂的采样循环。</td>
+<td>最低。流程类似监督微调，非常简洁高效。</td>
+<td>中等。比 PPO 成本低（省去了价值模型），但比 DPO 复杂（仍有 RL 循环）。</td>
+</tr>
+<tr>
+<td>主要优势</td>
+<td>灵活、鲁棒。适用于各种复杂的奖励函数，是久经考验的工业标准。</td>
+<td>简洁、高效。训练稳定，实现简单，大大降低了 RLHF 的门槛。</td>
+<td>高效、灵活。显著降低了 PPO 的成本，且能灵活利用可验证奖励。</td>
+</tr>
+<tr>
+<td>主要挑战</td>
+<td>复杂、昂贵。实现和调试难度大，对资源消耗极高。</td>
+<td>依赖数据质量。对偏好数据的一致性和质量要求高。</td>
+<td>组采样开销。需要为每个指令生成多个样本，会增加推理开销。</td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>需要精细控制奖励函数、追求极限性能的通用场景。</td>
+<td>数据集是成对偏好形式，希望快速、低成本地进行模型对齐的场景。</td>
+<td>计算资源受限，或任务存在客观、可程序化验证的奖励标准的场景 (如代码、数学)。</td>
+</tr>
+<tr>
+<td><strong>训练流程</strong></td>
+<td>需要两个阶段：先训练 Reward Model，再进行策略对齐。</td>
+<td>只有一个训练流程，不依赖 Reward Model。</td>
+<td>需要两个阶段：先训练 Reward Model，再进行策略对齐。</td>
+</tr>
+<tr>
+<td><strong>显卡资源需求</strong></td>
+<td>高：需要加载策略模型、价值模型、奖励模型、参考模型。</td>
+<td>低：需要加载策略模型和可选的参考模型。</td>
+<td>中：需要加载策略模型、奖励模型、参考模型。</td>
+</tr>
+<tr>
+<td><strong>对样本依赖</strong></td>
+<td>对样本标注的精度和数据量依赖相对较小，因 Reward Model 提供泛化。</td>
+<td>对样本标注的精度和数据量依赖较大，因缺少 Reward Model 的泛化。</td>
+<td>对样本标注的精度和数据量依赖相对较小，因 Reward Model 提供泛化。</td>
+</tr>
+<tr>
+<td><strong>灵活扩展性</strong></td>
+<td>高：可以通过多个 Reward Model 进行扩展。</td>
+<td>低：需要重新构建数据，灵活性和可扩展性较差。</td>
+<td>高：可以通过多个 Reward Model 进行扩展。</td>
+</tr>
+<tr>
+<td><strong>优点</strong></td>
+<td>灵活、鲁棒，适用于复杂的奖励函数。</td>
+<td>训练流程短，资源要求低，稳定性高，训练难度低。</td>
+<td>高效、灵活，显著降低了训练成本。</td>
+</tr>
+<tr>
+<td><strong>缺点</strong></td>
+<td>复杂、昂贵，调试难度大。</td>
+<td>容易过拟合，需求更大标注数据量，多任务适配较难。</td>
+<td>组采样开销大，推理开销增加。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="6.1-%E8%AF%A6%E7%BB%86%E5%88%86%E6%9E%90">6.1 详细分析<a class="anchor-link" href="#6.1-%E8%AF%A6%E7%BB%86%E5%88%86%E6%9E%90">¶</a></h4><h5 id="1%EF%BC%89PPO-(Proximal-Policy-Optimization)">1）PPO (Proximal Policy Optimization)<a class="anchor-link" href="#1%EF%BC%89PPO-(Proximal-Policy-Optimization)">¶</a></h5><ul>
+<li><strong>优点</strong>: 灵活性和鲁棒性强，适用于各种复杂的奖励函数，是久经考验的工业标准。</li>
+<li><strong>缺点</strong>: 训练过程复杂且昂贵，需要维护多个大型模型，调试难度大。</li>
+<li><strong>适用场景</strong>: 需要精细控制奖励函数、追求极限性能的通用场景。</li>
+</ul>
+<h5 id="2%EF%BC%89DPO-(Direct-Preference-Optimization)">2）DPO (Direct Preference Optimization)<a class="anchor-link" href="#2%EF%BC%89DPO-(Direct-Preference-Optimization)">¶</a></h5><ul>
+<li><strong>优点</strong>: 训练流程短，不需要 Reward Model，资源要求低，稳定性高，训练难度低。</li>
+<li><strong>缺点</strong>: 容易过拟合，依赖高质量的偏好数据，适应多任务较难。</li>
+<li><strong>适用场景</strong>: 数据集是成对偏好形式，希望快速、低成本地进行模型对齐的场景。</li>
+</ul>
+<h5 id="3%EF%BC%89GRPO-(Group-Relative-Policy-Optimization)">3）GRPO (Group Relative Policy Optimization)<a class="anchor-link" href="#3%EF%BC%89GRPO-(Group-Relative-Policy-Optimization)">¶</a></h5><ul>
+<li><strong>优点</strong>: 高效、灵活，显著降低了训练成本，能灵活利用可验证奖励。</li>
+<li><strong>缺点</strong>: 组采样开销大，需要为每个指令生成多个样本，推理开销增加。</li>
+<li><strong>适用场景</strong>: 计算资源受限，或任务存在客观、可程序化验证的奖励标准的场景 (如代码、数学)。</li>
+</ul>
+<p>通过以上对比，可以更清晰地理解这三种方法的优缺点及其适用场景，从而在实际应用中做出更合适的选择。</p>
+<h4 id="6.2-%E4%B8%80%E4%B8%AA%E7%94%9F%E5%8A%A8%E7%9A%84%E6%AF%94%E5%96%BB">6.2 一个生动的比喻<a class="anchor-link" href="#6.2-%E4%B8%80%E4%B8%AA%E7%94%9F%E5%8A%A8%E7%9A%84%E6%AF%94%E5%96%BB">¶</a></h4><ul>
+<li><strong>PPO</strong> 像是一位经验丰富的全科医生。他会给你做全面的检查（奖励模型评估），参考你的历史病历（价值模型），然后非常谨慎地给你开药方（Clipped Update），确保疗效的同时将副作用降到最低。这个过程非常完备，但也最耗时耗力。</li>
+<li><strong>DPO</strong> 像是一位专攻“比对诊断”的专家。你不需要告诉他你的具体指标，你只需要告诉他“相比于昨天，我今天感觉更好了”（偏好数据）。他就能直接根据这些“比对”信息，调整你的治疗方案。这个过程非常直接，省去了很多中间化验环节。</li>
+<li><strong>GRPO</strong> 像是一位组织“专家会诊”的医生。他把你的情况（指令）告诉一群实习医生（生成一组回答），让他们各自给出诊断方案和信心度（奖励）。然后他根据这些方案在“会诊”中的相对好坏（组内归一化），来决定最终采纳哪个方向的治疗思路。他自己不需要对你的历史情况了如指掌（无需价值模型），而是依赖“集体智慧”做决策。</li>
+</ul>
+<h3 id="7-%E6%80%BB%E7%BB%93%E4%B8%8E%E5%B1%95%E6%9C%9B">7 总结与展望<a class="anchor-link" href="#7-%E6%80%BB%E7%BB%93%E4%B8%8E%E5%B1%95%E6%9C%9B">¶</a></h3><p>从 PPO 的稳定可靠，到 DPO 的简洁直接，再到 GRPO 的高效灵活，我们看到了大模型对齐技术在“效果”、“效率”和“成本”这个不可能三角中的不断探索与演进。</p>
+<ul>
+<li><strong>PPO</strong> 作为 RLHF 的开创性和基准性方法，其地位在短期内难以被完全撼动。它强大的灵活性和鲁棒性使其在许多前沿研究和工业应用中依然是首选。</li>
+<li><strong>DPO</strong> 则成功地为 RLHF “祛魅”，它证明了在许多场景下，我们并不需要复杂的强化学习框架，一个巧妙的损失函数设计就能达到甚至超越 PPO 的效果。它的出现极大地推动了 RLHF 技术的普及和民主化。</li>
+<li><strong>GRPO</strong> 则在 PPO 的框架内进行了精妙的“减负”，它在保持 PPO 核心优势的同时，显著降低了训练成本，并为利用非传统奖励信号（如可验证奖励）开辟了新的道路，尤其在逻辑推理等领域展现出巨大潜力。</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ba6485ae">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">2 入门级偏好对齐示例，关注偏好数据构造、质量控制与伦理边界<a class="anchor-link" href="#2-%E5%85%A5%E9%97%A8%E7%BA%A7%E5%81%8F%E5%A5%BD%E5%AF%B9%E9%BD%90%E7%A4%BA%E4%BE%8B%EF%BC%8C%E5%85%B3%E6%B3%A8%E5%81%8F%E5%A5%BD%E6%95%B0%E6%8D%AE%E6%9E%84%E9%80%A0%E3%80%81%E8%B4%A8%E9%87%8F%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%BC%A6%E7%90%86%E8%BE%B9%E7%95%8C">¶</a></h3><p><code>hjh0119/shareAI-Llama3-DPO-zh-en-emoji</code></p>
+<p>精心选出了一些源于知乎、逻辑推理、弱智吧的问题作为Query，
+使用llama3 70b instruct版本采样生成。</p>
+<p>对每个query生成一个中文版本的answer和一个英文版本的answer，
+用于在llama3 8b instruct上进行语言偏好的学习。</p>
+<p>发现非常有用，整个对齐过程只需要1h左右的训练，实测性能表现却超过了大部分通过中文对话SFT后的llama3中文版本</p>
+<pre><code>git lfs install
+git clone https://www.modelscope.cn/datasets/hjh0119/shareAI-Llama3-DPO-zh-en-emoji.git
+
+# 24GiB 1h
+# It is recommended to use padding_free. For more details, please refer to:
+# https://github.com/modelscope/ms-swift/blob/main/examples/train/padding_free/dpo.sh
+CUDA_VISIBLE_DEVICES=0 \
+swift rlhf \
+    --rlhf_type dpo \
+    --model ./models/Qwen2.5-VL-3B-Instruct \
+    --train_type lora \
+    --dataset ./data/shareAI-Llama3-DPO-zh-en-emoji/ \
+    --split_dataset_ratio 0.01 \
+    --torch_dtype bfloat16 \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --learning_rate 1e-4 \
+    --lora_rank 8 \
+    --lora_alpha 32 \
+    --target_modules all-linear \
+    --gradient_accumulation_steps 16 \
+    --eval_steps 50 \
+    --save_steps 50 \
+    --save_total_limit 2 \
+    --logging_steps 5 \
+    --max_length 2048 \
+    --output_dir output \
+    --warmup_ratio 0.05 \
+    --dataloader_num_workers 4 \
+    --rpo_alpha 0.1 \
+    --dataset_num_proc 4
+</code></pre>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/v6-20250914-221953/images/eval_logps_chosen.png" width="800"/>
+</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/v6-20250914-221953/images/eval_logps_rejected.png" width="800"/>
+</p>
+<p align="center">
+<img alt="No description has been provided for this image" src="output/v6-20250914-221953/images/eval_loss.png" width="800"/>
+</p>
 </div>
 </div>
 </div>
