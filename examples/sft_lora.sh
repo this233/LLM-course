@@ -10,7 +10,7 @@ swift sft \
     --lora_rank 8 \
     --lora_alpha 32 \
     --gradient_accumulation_steps 16 \
-    --eval_steps 100 \
+    --eval_steps 30 \
     --save_steps 100 \
     --save_total_limit 2 \
     --logging_steps 5 \
